@@ -186,6 +186,54 @@ def _mk(card: SimCard, ts: float, name: str, mcc: str, category: str, amount: fl
     )
 
 
+AMBIENT_ANOMALY_MERCHANTS = [m for m in MERCHANTS if m[2] in ("luxury", "electronics", "travel", "online_marketplace")]
+
+
+def _freshly_active_card_token(now: float, window: float = 4.0) -> str | None:
+    """A card whose last transaction was within `window` seconds of `now` —
+    good raw material for a same-tick impossible-travel anomaly, which
+    (unlike AMOUNT/NEW_DEVICE) needs no seasoning: GEO_JUMP fires off a
+    single prior event, so it works even seconds into a brand-new stream,
+    before any card has built up the n>=5-8 history the other signals need."""
+    candidates = [tok for tok, p in state.card_profiles.items() if p.last_ts is not None and now - p.last_ts < window]
+    return random.choice(candidates) if candidates else None
+
+
+def generate_ambient_anomaly(now: float) -> Transaction:
+    """A single standalone suspicious transaction, woven into ordinary
+    background traffic at `state.sim.ambient_fraud_pct`% (see console/
+    simulation controls) — distinct from the deliberate multi-event
+    "Inject Attack" scenarios, this is just one transaction that actually
+    crosses the 0.40 alert threshold on its own, so a plain run (nobody
+    clicking Inject) still produces some alerts organically instead of
+    scoring silently below the floor.
+
+    Prefers a same-country-flip GEO_JUMP (weight 0.50, needs only one prior
+    transaction on the card) over an AMOUNT+NEW_DEVICE combo (needs a
+    seasoned card, n>=5ish, for AMOUNT's real z-score branch instead of its
+    weak cold-start fallback) — early in a fresh stream, before any card has
+    that much history, GEO_JUMP is the only signal that can reliably alert
+    on a single isolated event."""
+    recent_token = _freshly_active_card_token(now)
+    if recent_token is not None:
+        card = CARD_BY_TOKEN[recent_token]
+        profile = state.profile_for(card.card_token)
+        far_countries = [c for c in COUNTRY_CODES if c != profile.last_country]
+        if far_countries:
+            name, mcc, category = _pick_merchant(card)
+            amount = _amount_for(category, card.base_amount)
+            return _mk(card, now, name, mcc, category, amount, "ambient",
+                       country=random.choice(far_countries), device=random.choice(card.devices))
+
+    card = _seasoned_card()
+    profile = state.profile_for(card.card_token)
+    name, mcc, category = random.choice(AMBIENT_ANOMALY_MERCHANTS)
+    baseline = max(profile.mean_amount, card.base_amount)
+    amount = baseline * random.uniform(6, 12) + random.uniform(1500, 5000)
+    device = f"dev_{random.randrange(16**8):08x}"  # always unrecognized -> NEW_DEVICE fires too
+    return _mk(card, now, name, mcc, category, amount, "ambient", device=device)
+
+
 def inject_velocity(now: float) -> list[tuple[float, Transaction]]:
     card = _seasoned_card()
     out = []
@@ -293,5 +341,9 @@ def tick(st: AppState = state) -> None:
     n = int(expected)
     if random.random() < (expected - n):
         n += 1
+    ambient_p = max(0.0, st.sim.ambient_fraud_pct) / 100.0
     for _ in range(n):
-        process_transaction(generate_normal_transaction(now), st)
+        if ambient_p > 0 and random.random() < ambient_p:
+            process_transaction(generate_ambient_anomaly(now), st)
+        else:
+            process_transaction(generate_normal_transaction(now), st)

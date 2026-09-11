@@ -107,6 +107,18 @@ profile table, so the two never cross-contaminate. Session tokens live in
 NiceGUI's `app.storage.user` (`storage_secret` in `main.py` — currently a
 hardcoded demo value; move it to an env var before any real deploy).
 
+**Ambient anomalies**: by default, a plain run of the stream — nobody
+touching the Inject Attack buttons — still produces some alerts on its own.
+`state.sim.ambient_fraud_pct` (Simulation screen: the "Bad txns" −/+
+stepper, 0–25%, default 4%) is the % chance each ambient transaction is
+`simulator.generate_ambient_anomaly()` instead of a plain normal one. It
+prefers a same-tick country flip on a card that just transacted (GEO_JUMP,
+weight 0.50, needs only one prior event on that card — the only signal that
+can reliably alert on a single isolated transaction before any card has
+enough history for the others) and falls back to an elevated amount on an
+unrecognized device (AMOUNT + NEW_DEVICE stacked) once cards are seasoned
+enough for that combo to clear the 0.40 alert floor on its own.
+
 ## Notes on the layout
 
 The three-column shell (rail / main / investigation drawer) is a `flex` row
@@ -116,6 +128,17 @@ respecting `flex: 1` / `overflow: hidden`) — the classic nested-flexbox
 `min-height: auto` trap. If a future change to the drawer or rail makes
 content spill past the viewport again, check for a missing `min-h-0` before
 anything else.
+
+The header is a second flexbox gotcha, of a different kind: a flex row that
+is both `items-center` (or any centering alignment) *and* `overflow-x-auto`
+has a real Chromium bug where the cross-axis size of any child that
+actually needs to scroll gets inflated, pushing centered content down and
+clipping it against the container's fixed height (this is what was cutting
+the active top-nav pill off at the bottom). The fix is structural, not a
+CSS tweak: never let the same element both center its children and scroll
+horizontally. `header` in `app/ui_dashboard.py` only sets height/background/
+border; a single inner `div` (`h-full`, `overflow-x-auto`) does the actual
+centering and scrolling.
 
 ## Notes on the detection engine
 

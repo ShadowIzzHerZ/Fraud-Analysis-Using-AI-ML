@@ -485,6 +485,10 @@ def dashboard_page() -> None:
         state.sim.base_rate = float(e.value)
         rate_label.refresh()
 
+    def set_ambient_rate(delta: float) -> None:
+        state.sim.ambient_fraud_pct = max(0.0, min(25.0, state.sim.ambient_fraud_pct + delta))
+        ambient_rate_label.refresh()
+
     def on_policy_toggle(e) -> None:
         state.policy.auto_freeze_enabled = bool(e.value)
         ui.notify(f"Policy: Auto-Freeze is {'ACTIVE' if e.value else 'DISABLED'}.", position="bottom-right", timeout=3000)
@@ -630,6 +634,10 @@ def dashboard_page() -> None:
     @ui.refreshable
     def rate_label() -> None:
         raw_html(f'<span class="font-semibold {tx("on_surface")} w-14 text-right text-[11px]">{state.sim.base_rate:.0f} tx/s</span>')
+
+    @ui.refreshable
+    def ambient_rate_label() -> None:
+        raw_html(f'<span class="font-semibold {tx("on_surface")} w-9 text-center text-[11px]">{state.sim.ambient_fraud_pct:.0f}%</span>')
 
     @ui.refreshable
     def run_controls() -> None:
@@ -1093,6 +1101,20 @@ def dashboard_page() -> None:
                         ui.slider(min=1, max=50, value=state.sim.base_rate, step=1, on_change=on_speed_change) \
                             .props('thumb-color="#b8431e" track-color="#e5e1d6" color="#b8431e"').classes("w-32")
                         rate_label()
+                    with ui.element("div").classes(f'flex items-center gap-1.5 px-2 py-1 {bg("surface_low")} rounded-full border {bd("outline_variant")} text-[11px]'):
+                        raw_html(f'<span class="{tx("muted")} font-bold text-[10px] uppercase pl-1">Bad txns</span>')
+                        raw_html(
+                            f'<button title="Decrease" class="w-6 h-6 flex items-center justify-center rounded-full {bg("surface_lowest")} border {bd("outline_variant")} {tx("on_surface")} font-bold hover:{bg("surface_container")} active:scale-[0.95] transition-all">−</button>'
+                        ).on("click", lambda e: set_ambient_rate(-1))
+                        ambient_rate_label()
+                        raw_html(
+                            f'<button title="Increase" class="w-6 h-6 flex items-center justify-center rounded-full {bg("surface_lowest")} border {bd("outline_variant")} {tx("on_surface")} font-bold hover:{bg("surface_container")} active:scale-[0.95] transition-all">+</button>'
+                        ).on("click", lambda e: set_ambient_rate(1))
+                raw_html(
+                    f'<div class="text-[11px] {tx("muted")}">Of ambient (non-injected) traffic, this % is nudged toward '
+                    f'looking suspicious — a live-ish trickle of alerts even when nobody clicks Inject Attack. '
+                    f'0% turns it off entirely.</div>'
+                )
                 inject_buttons()
             raw_html(f'<div class="text-[11px] font-bold {tx("muted")} uppercase tracking-wider mb-2">Recent injections</div>')
             if not filters.injection_log:
@@ -1243,40 +1265,49 @@ def dashboard_page() -> None:
 
     # -- layout --------------------------------------------------------------
     with ui.element("div").classes(f'{bg("background")} {tx("on_surface")} antialiased h-screen flex flex-col overflow-hidden'):
-        # Top app bar
-        with ui.element("header").classes(f'flex flex-nowrap items-center justify-between px-6 h-16 {bg("surface_lowest")} border-b {bd("outline_variant")} z-40 shrink-0 gap-3 overflow-x-auto'):
-            with ui.element("div").classes("flex items-center gap-3 min-w-0"):
-                raw_html(
-                    f'<div class="flex items-center gap-2.5 shrink-0"><div class="w-8 h-8 rounded-xl {bg("primary")} text-white flex items-center justify-center font-bold text-sm shadow-sm">Z</div>'
-                    f'<div class="flex flex-col hdr-subtitle"><span class="text-[16px] font-bold tracking-tight {tx("on_surface")} leading-tight">Zen</span>'
-                    f'<span class="text-[10px] font-medium {tx("muted")} tracking-tight">Fraud Operations</span></div></div>'
-                )
-                raw_html(f'<div class="h-5 w-px {bg("outline_variant")} shrink-0"></div>')
-                live_indicator()
-                raw_html(
-                    f'<button title="Simulate Hiccup" class="flex items-center gap-1.5 px-3 py-1 {bg("surface_low")} hover:{bg("surface_container")} border {bd("outline_variant")} {tx("muted_dark")} hover:text-[{C["on_surface"]}] text-[11px] font-medium rounded-full transition-all active:scale-[0.98] shrink-0">'
-                    f'{icon("wifi_off", "text-[13px]")}<span class="hdr-label">Simulate Hiccup</span></button>'
-                ).on("click", lambda e: toggle_hiccup())
-                top_nav()
-            with ui.element("div").classes("flex items-center gap-3 shrink-0"):
-                header_counters()
-                raw_html(
-                    f'<button title="Export CSV" class="flex items-center gap-1.5 px-3.5 py-1.5 {bg("surface_lowest")} hover:{bg("surface_container")} border {bd("outline_variant")} {tx("on_surface")} text-[12px] font-semibold rounded-full shadow-sm transition-all active:scale-[0.98] shrink-0">'
-                    f'{icon("download", "text-[15px]")}<span class="inline hdr-label">Export CSV</span></button>'
-                ).on("click", lambda e: export_csv())
-                raw_html(
-                    f'<button title="Emergency Freeze" class="flex items-center gap-1.5 px-3.5 py-1.5 {bg("primary")} hover:bg-[{C["primary_hover"]}] text-white text-[12px] font-semibold rounded-full shadow-sm transition-all active:scale-[0.98] shrink-0 whitespace-nowrap">'
-                    f'{icon("lock_clock", "text-[15px]")}<span class="inline hdr-label-short">Emergency Freeze</span></button>'
-                ).on("click", lambda e: emergency_freeze())
-                raw_html(f'<div class="h-5 w-px {bg("outline_variant")} shrink-0"></div>')
-                _analyst_name = session.get("display_name") or session.get("email", "?")
-                _initials = "".join(w[0] for w in _analyst_name.split()[:2]).upper() or "?"
-                raw_html(
-                    f'<div class="w-8 h-8 rounded-full {bg("surface_high")} border {bd("outline_variant")} flex items-center justify-center font-bold text-[11px] {tx("on_surface")} shrink-0" title="Signed in as {escape(session.get("email", ""))}">{escape(_initials)}</div>'
-                )
-                raw_html(
-                    f'<button title="Log out" class="p-1.5 {tx("muted")} hover:text-[{C["primary"]}] rounded-full hover:{bg("surface_low")} transition-colors shrink-0">{icon("logout", "text-[16px]")}</button>'
-                ).on("click", lambda e: do_logout())
+        # Top app bar. `header` itself only sets the fixed height/background/
+        # border — it does NOT do flex centering or scrolling. Chromium has a
+        # real bug where a flex row that's both `items-center` and
+        # `overflow-x-auto` inflates the cross-axis size of any child that
+        # needs to scroll; that's what was pushing the nav pills down and
+        # clipping them against the header's bottom edge. Centering and
+        # horizontal scrolling now live on two different elements — a plain
+        # height:100% inner row does the scrolling — so nothing is ever both
+        # centered and scrollable in the same box.
+        with ui.element("header").classes(f'h-16 px-6 {bg("surface_lowest")} border-b {bd("outline_variant")} z-40 shrink-0'):
+            with ui.element("div").classes("flex flex-nowrap items-center justify-between gap-3 h-full overflow-x-auto"):
+                with ui.element("div").classes("flex items-center gap-3 min-w-0"):
+                    raw_html(
+                        f'<div class="flex items-center gap-2.5 shrink-0"><div class="w-8 h-8 rounded-xl {bg("primary")} text-white flex items-center justify-center font-bold text-sm shadow-sm">Z</div>'
+                        f'<div class="flex flex-col hdr-subtitle"><span class="text-[16px] font-bold tracking-tight {tx("on_surface")} leading-tight">Zen</span>'
+                        f'<span class="text-[10px] font-medium {tx("muted")} tracking-tight">Fraud Operations</span></div></div>'
+                    )
+                    raw_html(f'<div class="h-5 w-px {bg("outline_variant")} shrink-0"></div>')
+                    live_indicator()
+                    raw_html(
+                        f'<button title="Simulate Hiccup" class="flex items-center gap-1.5 px-3 py-1 {bg("surface_low")} hover:{bg("surface_container")} border {bd("outline_variant")} {tx("muted_dark")} hover:text-[{C["on_surface"]}] text-[11px] font-medium rounded-full transition-all active:scale-[0.98] shrink-0">'
+                        f'{icon("wifi_off", "text-[13px]")}<span class="hdr-label">Simulate Hiccup</span></button>'
+                    ).on("click", lambda e: toggle_hiccup())
+                    top_nav()
+                with ui.element("div").classes("flex items-center gap-3 shrink-0"):
+                    header_counters()
+                    raw_html(
+                        f'<button title="Export CSV" class="flex items-center gap-1.5 px-3.5 py-1.5 {bg("surface_lowest")} hover:{bg("surface_container")} border {bd("outline_variant")} {tx("on_surface")} text-[12px] font-semibold rounded-full shadow-sm transition-all active:scale-[0.98] shrink-0">'
+                        f'{icon("download", "text-[15px]")}<span class="inline hdr-label">Export CSV</span></button>'
+                    ).on("click", lambda e: export_csv())
+                    raw_html(
+                        f'<button title="Emergency Freeze" class="flex items-center gap-1.5 px-3.5 py-1.5 {bg("primary")} hover:bg-[{C["primary_hover"]}] text-white text-[12px] font-semibold rounded-full shadow-sm transition-all active:scale-[0.98] shrink-0 whitespace-nowrap">'
+                        f'{icon("lock_clock", "text-[15px]")}<span class="inline hdr-label-short">Emergency Freeze</span></button>'
+                    ).on("click", lambda e: emergency_freeze())
+                    raw_html(f'<div class="h-5 w-px {bg("outline_variant")} shrink-0"></div>')
+                    _analyst_name = session.get("display_name") or session.get("email", "?")
+                    _initials = "".join(w[0] for w in _analyst_name.split()[:2]).upper() or "?"
+                    raw_html(
+                        f'<div class="w-8 h-8 rounded-full {bg("surface_high")} border {bd("outline_variant")} flex items-center justify-center font-bold text-[11px] {tx("on_surface")} shrink-0" title="Signed in as {escape(session.get("email", ""))}">{escape(_initials)}</div>'
+                    )
+                    raw_html(
+                        f'<button title="Log out" class="p-1.5 {tx("muted")} hover:text-[{C["primary"]}] rounded-full hover:{bg("surface_low")} transition-colors shrink-0">{icon("logout", "text-[16px]")}</button>'
+                    ).on("click", lambda e: do_logout())
 
         hiccup_banner()
         error_banner()

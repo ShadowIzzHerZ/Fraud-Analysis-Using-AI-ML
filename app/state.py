@@ -99,6 +99,11 @@ class SimulatorControls:
     burst_rate: float = 40.0  # events/sec, during an injected attack
     burst_until: float = 0.0  # timestamp; while now < this, use burst_rate
     tick_seconds: float = 0.2
+    # % chance each ambient (non-injected) transaction is nudged toward
+    # looking suspicious instead of purely normal — so the feed produces
+    # some organic alerts on its own, distinct from the deliberate
+    # multi-event "Inject Attack" scenarios. 0 disables it entirely.
+    ambient_fraud_pct: float = 4.0
 
 
 class AppState:
