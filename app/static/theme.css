@@ -42,6 +42,21 @@ body { overflow: hidden; }
 .flash-new-tx { animation: row-flash-light 1.4s ease-out; }
 .flash-new-alert { animation: alert-flash-light 1.8s ease-out; }
 
+/* Auth screen (login/signup): subtle diagonal-stripe backdrop behind the
+   card, and a shake to draw the eye to an error without a toast alone. */
+.auth-stripes {
+  background:
+    linear-gradient(#f7f5f0, #f7f5f0) padding-box,
+    repeating-linear-gradient(45deg, #ede9e0 0 1px, transparent 1px 14px);
+}
+@keyframes auth-shake-kf {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-4px); }
+  40%, 60% { transform: translateX(4px); }
+}
+.auth-shake { animation: auth-shake-kf 0.45s cubic-bezier(.36,.07,.19,.97) both; }
+
 /* Detail drawer slides by width (matches the reference), not transform,
    so it never overlaps content or needs a fixed viewport position. */
 #investigation-drawer { transition: width .22s ease-in-out; }

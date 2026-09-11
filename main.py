@@ -11,6 +11,7 @@ from nicegui import app, ui
 from app import simulator
 from app.state import state
 from app import ui_dashboard  # noqa: F401  (import registers the @ui.page('/') route)
+from app import auth_ui  # noqa: F401  (registers @ui.page('/login') and '/signup')
 
 
 async def _simulation_loop() -> None:
@@ -32,4 +33,12 @@ if __name__ in {"__main__", "__mp_main__"}:
     # earlier dark-ops design — dark=True left every native Quasar input
     # (search box, Channel select, Auto-Freeze threshold) rendering white
     # text on our light surfaces, i.e. invisible.
-    ui.run(title="Zen — Fraud Ops", dark=False, reload=False, port=8080, show=False)
+    #
+    # storage_secret enables app.storage.user (a signed, per-browser cookie
+    # store) — that's where the Supabase session lives between page loads.
+    # Hardcoded here since this is a single-process hackathon demo with no
+    # env-var plumbing yet; rotate/move to an env var before any real deploy.
+    ui.run(
+        title="Zen — Fraud Ops", dark=False, reload=False, port=8080, show=False,
+        storage_secret="zen-demo-storage-secret-change-before-deploying",
+    )

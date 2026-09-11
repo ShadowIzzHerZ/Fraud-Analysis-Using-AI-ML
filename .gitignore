@@ -5,3 +5,7 @@ __pycache__/
 *.egg-info/
 .ruff_cache/
 .pytest_cache/
+
+# NiceGUI's on-disk session store — per-browser storage.user data, which
+# now includes Supabase access/refresh tokens. Never commit this.
+.nicegui/

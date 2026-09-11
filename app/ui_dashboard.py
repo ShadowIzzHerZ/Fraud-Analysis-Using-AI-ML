@@ -355,6 +355,13 @@ DETECTOR_REFERENCE = [
 
 @ui.page("/")
 def dashboard_page() -> None:
+    from app.auth import SESSION_KEY, sign_out
+
+    session = app.storage.user.get(SESSION_KEY)
+    if not session:
+        ui.navigate.to("/login")
+        return
+
     filters = UIFilters()
     refs: dict = {"note": None}
 
@@ -523,6 +530,11 @@ def dashboard_page() -> None:
             drawer_body.refresh()
             drawer_status_badge.refresh()
         ui.notify(f"🚨 Emergency Freeze: blocked {len(frozen)} high-risk cards immediately!", position="bottom-right", timeout=4000, type="negative")
+
+    def do_logout() -> None:
+        sign_out(session.get("access_token"))
+        app.storage.user.pop(SESSION_KEY, None)
+        ui.navigate.to("/login")
 
     def clear_error_banner() -> None:
         state.stream_error = None
@@ -1246,9 +1258,14 @@ def dashboard_page() -> None:
                     f'{icon("lock_clock", "text-[15px]")}<span class="inline hdr-label-short">Emergency Freeze</span></button>'
                 ).on("click", lambda e: emergency_freeze())
                 raw_html(f'<div class="h-5 w-px {bg("outline_variant")} shrink-0"></div>')
+                _analyst_name = session.get("display_name") or session.get("email", "?")
+                _initials = "".join(w[0] for w in _analyst_name.split()[:2]).upper() or "?"
                 raw_html(
-                    f'<div class="w-8 h-8 rounded-full {bg("surface_high")} border {bd("outline_variant")} flex items-center justify-center font-bold text-[11px] {tx("on_surface")} shrink-0" title="Investigator SOC Profile">SOC</div>'
+                    f'<div class="w-8 h-8 rounded-full {bg("surface_high")} border {bd("outline_variant")} flex items-center justify-center font-bold text-[11px] {tx("on_surface")} shrink-0" title="Signed in as {escape(session.get("email", ""))}">{escape(_initials)}</div>'
                 )
+                raw_html(
+                    f'<button title="Log out" class="p-1.5 {tx("muted")} hover:text-[{C["primary"]}] rounded-full hover:{bg("surface_low")} transition-colors shrink-0">{icon("logout", "text-[16px]")}</button>'
+                ).on("click", lambda e: do_logout())
 
         hiccup_banner()
         error_banner()

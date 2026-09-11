@@ -95,6 +95,18 @@ gate, the mule-burst average-ticket cap) were rescaled to realistic Indian
 price levels — the log-space z-score itself is scale-invariant, so it didn't
 need retuning, but the flat thresholds did.
 
+**Auth**: [`app/auth.py`](app/auth.py) and [`app/auth_ui.py`](app/auth_ui.py)
+add real analyst accounts via [Supabase Auth](https://supabase.com/docs/guides/auth)
+(email + password) — `/login` and `/signup` gate `/`, and the header's avatar
+shows the signed-in analyst's initials with a logout action. Zen shares its
+Supabase project's `auth.users` pool with another app on the same account, so
+every Zen signup carries an `app: "zen"` flag in its auth metadata; a DB
+trigger on that project (see migration `add_zen_analysts_table`) routes
+those into their own `public.zen_analysts` table instead of that other app's
+profile table, so the two never cross-contaminate. Session tokens live in
+NiceGUI's `app.storage.user` (`storage_secret` in `main.py` — currently a
+hardcoded demo value; move it to an env var before any real deploy).
+
 ## Notes on the layout
 
 The three-column shell (rail / main / investigation drawer) is a `flex` row
