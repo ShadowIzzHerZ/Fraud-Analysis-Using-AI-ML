@@ -29,7 +29,7 @@ begin the simulated transaction firehose.
 ## How it's organized
 
 - [`app/models.py`](app/models.py) — `Transaction`, `Alert`, `ScoreResult`, etc.
-- [`app/geo.py`](app/geo.py) — country centroids + haversine distance, for the impossible-travel detector.
+- [`app/geo.py`](app/geo.py) — Indian city centroids + haversine distance, for the impossible-travel detector.
 - [`app/state.py`](app/state.py) — the in-memory `AppState` singleton: the live feed, alerts, per-card rolling behavioural profiles (Welford mean/std in log-space), policy, simulator controls, KPIs, CSV export.
 - [`app/simulator.py`](app/simulator.py) — the transaction firehose: a population of 1,000 synthetic cards generating plausible baseline traffic, plus four attack-injection scenarios (velocity spike, amount outlier, impossible travel, mule burst).
 - [`app/scoring.py`](app/scoring.py) — the detection engine: six named detectors (`AMOUNT`, `VELOCITY`, `GEO_JUMP`, `NEW_DEVICE`, `MULE_BURST`, `UNUSUAL_MCC`), each producing a human-readable reason. Weights are additive and capped at 1.0 — no black-box model, every alert cites its detectors.
@@ -64,6 +64,35 @@ geolocation fields on every transaction, shown in the investigation drawer.
 Clicking a plain feed row (one that never crossed the alert threshold) opens
 the same drawer read-only-ish — taking an action on it promotes it into a
 real, tracked alert on the spot.
+
+**Multi-screen navigation**: the top bar (Console/Simulation/Policies/Audit
+Logs) and left rail (Live Stream/Alerts Queue/Investigation/Policy Rules/
+Telemetry) both switch a shared `filters.view` in `app/ui_dashboard.py` — every
+nav button actually navigates, with the active one highlighted in both bars.
+Console is the original KPI+feed+alerts dashboard; the other six are
+full-width screens built from the same underlying data (a full-page Alerts
+Queue, an Investigation queue of in-review/resolved cases, a Policy Rules
+reference table of all six detectors with their max weights, a Telemetry
+screen with a bigger throughput chart and all-time severity/detector
+breakdowns, a Simulation screen with a log of recent injections, and an Audit
+Logs screen aggregating every alert's enforcement history). Clicking an
+"Inject Attack" button now stays visibly pressed/checked (and logs itself to
+the Simulation screen's injection log) so it's clear which scenario was just
+fired. `main`'s overflow changed from clipped to scrollable, so a screen with
+more content than fits (or a short browser window) scrolls instead of losing
+content off the bottom.
+
+**Locale**: the whole simulation — vendors, cities, currency — is India/INR.
+Merchant names are fictional but India-flavored (e.g. "Sabzi Mandi Grocers",
+"Garuda Airways"); the 16 simulated "countries" are Indian cities (Mumbai,
+Delhi, Bengaluru, ...) so the impossible-travel detector still has real
+geographic spread to work with; every amount renders through `fmt_inr()`,
+which does Indian digit grouping (lakh/crore: ₹12,34,567) rather than Western
+thousands-grouping. Category price ranges and the few absolute-₹ detector
+thresholds (the amount-outlier cold-start fallback, the new-device amount
+gate, the mule-burst average-ticket cap) were rescaled to realistic Indian
+price levels — the log-space z-score itself is scale-invariant, so it didn't
+need retuning, but the flat thresholds did.
 
 ## Notes on the layout
 

@@ -19,42 +19,44 @@ from app.state import AppState, state
 
 CARD_POOL_SIZE = 1000
 
-# (display name, mcc, category) — category drives amount range + channel mix
+# (display name, mcc, category) — category drives amount range + channel mix.
+# Vendors are fictional but India-flavored, matching the CURRENCY below.
 MERCHANTS: list[tuple[str, str, str]] = [
-    ("Green Valley Grocers", "5411", "grocery"),
-    ("Corner Bistro", "5812", "restaurant"),
-    ("QuickFuel Station", "5541", "fuel"),
-    ("Circuit City Electronics", "5732", "electronics"),
-    ("SkyLine Airways", "4511", "travel"),
-    ("Harborview Hotel", "7011", "hotel"),
-    ("StreamPlus Subscription", "5968", "subscription"),
-    ("MarketHub Online", "5969", "online_marketplace"),
-    ("CarePoint Pharmacy", "5912", "pharmacy"),
-    ("Metro ATM Network", "6011", "atm"),
-    ("Aurelia Jewellers", "5944", "luxury"),
-    ("RideNow", "4121", "rideshare"),
-    ("CityPower Utilities", "4900", "utilities"),
-    ("Thread & Co Apparel", "5651", "clothing"),
-    ("Bean There Coffee", "5814", "restaurant"),
-    ("HomeGoods Depot", "5200", "home"),
+    ("Sabzi Mandi Grocers", "5411", "grocery"),
+    ("Dilli Darbar Dhaba", "5812", "restaurant"),
+    ("Bharat Petrol Pump", "5541", "fuel"),
+    ("Lotus Electronics Bazaar", "5732", "electronics"),
+    ("Garuda Airways", "4511", "travel"),
+    ("Taj Vista Hotel", "7011", "hotel"),
+    ("StreamPlus India", "5968", "subscription"),
+    ("DesiMarket Online", "5969", "online_marketplace"),
+    ("Apollo CarePoint Pharmacy", "5912", "pharmacy"),
+    ("Bharat ATM Network", "6011", "atm"),
+    ("Rajwada Jewellers", "5944", "luxury"),
+    ("RideNow India", "4121", "rideshare"),
+    ("CityLight Power Utilities", "4900", "utilities"),
+    ("Thread & Co. Apparel India", "5651", "clothing"),
+    ("Chai Tapri Café", "5814", "restaurant"),
+    ("Ghar Decor Home Store", "5200", "home"),
 ]
 
+# All amounts are ₹ (INR) — realistic everyday Indian price levels per category.
 CATEGORY_AMOUNT_RANGE = {
-    "grocery": (15, 140),
-    "restaurant": (8, 90),
-    "fuel": (25, 100),
-    "electronics": (60, 1200),
-    "travel": (150, 1800),
-    "hotel": (90, 950),
-    "subscription": (5, 60),
-    "online_marketplace": (10, 400),
-    "pharmacy": (8, 120),
-    "atm": (40, 400),
-    "luxury": (200, 6000),
-    "rideshare": (6, 55),
-    "utilities": (30, 220),
-    "clothing": (15, 260),
-    "home": (20, 500),
+    "grocery": (150, 3000),
+    "restaurant": (100, 2500),
+    "fuel": (300, 4000),
+    "electronics": (1000, 80000),
+    "travel": (1500, 25000),
+    "hotel": (1200, 18000),
+    "subscription": (99, 999),
+    "online_marketplace": (150, 12000),
+    "pharmacy": (80, 3000),
+    "atm": (500, 15000),
+    "luxury": (3000, 300000),
+    "rideshare": (60, 800),
+    "utilities": (300, 6000),
+    "clothing": (250, 8000),
+    "home": (400, 20000),
 }
 
 CATEGORY_ONLINE_BIAS = {
@@ -64,11 +66,7 @@ CATEGORY_ONLINE_BIAS = {
     "atm": 0.0, "luxury": 0.3, "home": 0.4,
 }
 
-CURRENCY_BY_COUNTRY = {
-    "US": "USD", "GB": "GBP", "DE": "EUR", "FR": "EUR", "IN": "INR", "BR": "BRL",
-    "AU": "AUD", "JP": "JPY", "NG": "NGN", "CN": "CNY", "RU": "RUB", "ZA": "ZAR",
-    "CA": "CAD", "MX": "MXN", "AE": "AED", "SG": "SGD",
-}
+CURRENCY = "INR"
 
 
 @dataclass
@@ -85,7 +83,7 @@ def _make_card(i: int) -> SimCard:
     home = random.choice(COUNTRY_CODES)
     n_devices = 1 if random.random() < 0.8 else 2
     devices = [f"dev_{random.randrange(16**8):08x}" for _ in range(n_devices)]
-    base_amount = random.choice([20, 35, 55, 80, 120, 180, 300])
+    base_amount = random.choice([300, 600, 1000, 1800, 3000, 5000, 9000])
     habits = random.sample([m[1] for m in MERCHANTS], k=random.randint(3, 6))
     return SimCard(
         card_token=f"tok_{i:05d}",
@@ -145,7 +143,7 @@ def generate_normal_transaction(now: float) -> Transaction:
         id=new_id("txn"),
         ts=now,
         amount=amount,
-        currency=CURRENCY_BY_COUNTRY.get(country, "USD"),
+        currency=CURRENCY,
         merchant=name,
         mcc=mcc,
         channel=_channel_for(category),
@@ -175,7 +173,7 @@ def _mk(card: SimCard, ts: float, name: str, mcc: str, category: str, amount: fl
         id=new_id("txn"),
         ts=ts,
         amount=round(amount, 2),
-        currency=CURRENCY_BY_COUNTRY.get(country, "USD"),
+        currency=CURRENCY,
         merchant=name,
         mcc=mcc,
         channel=_channel_for(category),
@@ -205,7 +203,7 @@ def inject_amount_outlier(now: float) -> list[tuple[float, Transaction]]:
     profile = state.profile_for(card.card_token)
     baseline = max(profile.mean_amount, card.base_amount)
     name, mcc, category = random.choice([m for m in MERCHANTS if m[2] in ("luxury", "electronics", "travel")])
-    amount = baseline * random.uniform(12, 22) + random.uniform(1200, 3500)
+    amount = baseline * random.uniform(12, 22) + random.uniform(5000, 15000)
     return [(now + 0.5, _mk(card, now + 0.5, name, mcc, category, amount, "amount_outlier"))]
 
 
@@ -230,7 +228,7 @@ def inject_mule_burst(now: float) -> list[tuple[float, Transaction]]:
     t = now
     used_names = random.sample(MERCHANTS, k=min(len(MERCHANTS), random.randint(7, 9)))
     for name, mcc, category in used_names:
-        amount = random.uniform(8, 45)
+        amount = random.uniform(150, 1200)
         out.append((t, _mk(card, t, name, mcc, category, amount, "mule_burst")))
         t += random.uniform(6.0, 11.0)
     return out

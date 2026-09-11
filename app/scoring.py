@@ -17,7 +17,7 @@ from app.state import CardProfile
 VELOCITY_WINDOW_S = 60.0
 MULE_WINDOW_S = 90.0
 MULE_DISTINCT_MERCHANTS = 6
-MULE_AVG_AMOUNT_MAX = 60.0
+MULE_AVG_AMOUNT_MAX = 2000.0  # ₹
 
 SEVERITY_THRESHOLDS = [
     (0.85, Severity.CRITICAL),
@@ -40,8 +40,8 @@ def _detect_amount_outlier(txn: Transaction, profile: CardProfile) -> Optional[t
         # absolute threshold. Kept as a supporting signal only (not enough to
         # alert alone) so a young card's first big-but-plausible purchase
         # doesn't page an analyst by itself.
-        if txn.amount >= 4000:
-            return 0.20, Reason("AMOUNT", f"Large amount (${txn.amount:,.0f}) with little or no history on this card")
+        if txn.amount >= 15000:
+            return 0.20, Reason("AMOUNT", f"Large amount (₹{txn.amount:,.0f}) with little or no history on this card")
         return None
     z = profile.amount_zscore(txn.amount)
     if z >= 3.6:
@@ -54,7 +54,7 @@ def _detect_amount_outlier(txn: Transaction, profile: CardProfile) -> Optional[t
         return None
     return w, Reason(
         "AMOUNT",
-        f"Amount ${txn.amount:,.0f} is well above this card's usual range (avg ${profile.mean_amount:,.0f})",
+        f"Amount ₹{txn.amount:,.0f} is well above this card's usual range (avg ₹{profile.mean_amount:,.0f})",
     )
 
 
@@ -90,11 +90,11 @@ def _detect_new_device(txn: Transaction, profile: CardProfile) -> Optional[tuple
     if profile.n < 3 or txn.device_fp in profile.seen_devices:
         return None
     relative = txn.amount / max(profile.mean_amount, 1e-6)
-    if relative < 2.5 and txn.amount < 800:
+    if relative < 2.5 and txn.amount < 3000:
         return None
     return 0.25, Reason(
         "NEW_DEVICE",
-        f"Unrecognized device for this card, amount ${txn.amount:,.0f} (avg ${profile.mean_amount:,.0f})",
+        f"Unrecognized device for this card, amount ₹{txn.amount:,.0f} (avg ₹{profile.mean_amount:,.0f})",
     )
 
 
@@ -109,7 +109,7 @@ def _detect_mule_burst(txn: Transaction, profile: CardProfile) -> Optional[tuple
         return None
     return 0.45, Reason(
         "MULE_BURST",
-        f"{len(distinct_merchants)} distinct merchants in {int(MULE_WINDOW_S)}s, avg ${avg_amount:,.0f}",
+        f"{len(distinct_merchants)} distinct merchants in {int(MULE_WINDOW_S)}s, avg ₹{avg_amount:,.0f}",
     )
 
 

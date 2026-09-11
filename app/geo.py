@@ -1,8 +1,10 @@
-"""Tiny geo helper: approximate country centroids + haversine distance.
+"""Tiny geo helper: approximate city centroids + haversine distance.
 
-Just enough fidelity to make "impossible travel" (same card, two countries,
-no time to have physically flown between them) a believable detector for a
-simulated stream — not meant as a real geocoding source.
+Just enough fidelity to make "impossible travel" (same card, two cities, no
+time to have physically flown between them) a believable detector for a
+simulated stream — not meant as a real geocoding source. Cities span India
+so the detector still has real geographic spread to work with (Mumbai to
+Guwahati is ~2,400 km, for instance).
 """
 from __future__ import annotations
 
@@ -10,28 +12,28 @@ import math
 
 # (lat, lon) centroids, deliberately coarse.
 COUNTRIES: dict[str, tuple[float, float]] = {
-    "US": (39.8, -98.6),
-    "GB": (54.0, -2.0),
-    "DE": (51.2, 10.4),
-    "FR": (46.6, 2.2),
-    "IN": (22.0, 79.0),
-    "BR": (-10.0, -55.0),
-    "AU": (-25.0, 134.0),
-    "JP": (36.2, 138.3),
-    "NG": (9.1, 8.7),
-    "CN": (35.9, 104.2),
-    "RU": (61.5, 105.3),
-    "ZA": (-29.0, 24.0),
-    "CA": (56.1, -106.3),
-    "MX": (23.6, -102.5),
-    "AE": (23.4, 53.8),
-    "SG": (1.35, 103.8),
+    "Mumbai": (19.076, 72.877),
+    "Delhi": (28.613, 77.209),
+    "Bengaluru": (12.972, 77.594),
+    "Hyderabad": (17.385, 78.487),
+    "Chennai": (13.083, 80.270),
+    "Kolkata": (22.573, 88.364),
+    "Pune": (18.520, 73.856),
+    "Ahmedabad": (23.023, 72.571),
+    "Jaipur": (26.912, 75.787),
+    "Lucknow": (26.847, 80.946),
+    "Chandigarh": (30.733, 76.779),
+    "Kochi": (9.931, 76.267),
+    "Bhopal": (23.259, 77.412),
+    "Surat": (21.170, 72.831),
+    "Guwahati": (26.144, 91.736),
+    "Goa": (15.490, 73.828),
 }
 
 COUNTRY_CODES = list(COUNTRIES.keys())
 
 # A plausible commercial-flight ceiling. Anything implying a faster average
-# speed between two countries than this is physically impossible.
+# speed between two cities than this is physically impossible.
 MAX_PLAUSIBLE_KMH = 900.0
 
 
