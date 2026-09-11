@@ -129,16 +129,23 @@ respecting `flex: 1` / `overflow: hidden`) — the classic nested-flexbox
 content spill past the viewport again, check for a missing `min-h-0` before
 anything else.
 
-The header is a second flexbox gotcha, of a different kind: a flex row that
-is both `items-center` (or any centering alignment) *and* `overflow-x-auto`
-has a real Chromium bug where the cross-axis size of any child that
-actually needs to scroll gets inflated, pushing centered content down and
-clipping it against the container's fixed height (this is what was cutting
-the active top-nav pill off at the bottom). The fix is structural, not a
-CSS tweak: never let the same element both center its children and scroll
-horizontally. `header` in `app/ui_dashboard.py` only sets height/background/
-border; a single inner `div` (`h-full`, `overflow-x-auto`) does the actual
-centering and scrolling.
+The header is a second flexbox gotcha, of a different kind: `flex-wrap`
+isn't inherited, and a `flex-nowrap` on an ancestor only stops *that*
+container's own direct children from wrapping — it says nothing about
+whether a nested flex container wraps its own. The header's left group
+(logo + nav) and right group (counters + actions) are each their own
+nested flex row; neither originally set its own `flex-nowrap`, so once its
+content stopped fitting, the left group silently wrapped the nav onto a
+second line *inside itself* — invisibly, no visible seam — and that second
+line got cut off against the header's fixed `h-16`. This is what was
+clipping the active top-nav pill off at the bottom. Every flex container in
+the header now sets `flex-nowrap` explicitly instead of relying on an
+ancestor's. (`header` itself also splits scrolling and centering across
+two inner divs rather than doing both on one element — not the cause of
+this particular bug, but a container that's simultaneously the thing
+centering an overflowing child *and* the thing scrolling it is a real,
+separately-known source of inconsistent sizing, so it's cheap insurance
+to keep them apart regardless.)
 
 ## Notes on the detection engine
 

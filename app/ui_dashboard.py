@@ -1266,48 +1266,58 @@ def dashboard_page() -> None:
     # -- layout --------------------------------------------------------------
     with ui.element("div").classes(f'{bg("background")} {tx("on_surface")} antialiased h-screen flex flex-col overflow-hidden'):
         # Top app bar. `header` itself only sets the fixed height/background/
-        # border — it does NOT do flex centering or scrolling. Chromium has a
-        # real bug where a flex row that's both `items-center` and
-        # `overflow-x-auto` inflates the cross-axis size of any child that
-        # needs to scroll; that's what was pushing the nav pills down and
-        # clipping them against the header's bottom edge. Centering and
-        # horizontal scrolling now live on two different elements — a plain
-        # height:100% inner row does the scrolling — so nothing is ever both
-        # centered and scrollable in the same box.
+        # border; scrolling and centering are split across two inner divs
+        # (harmless either way, but keeps a scroll container from ever also
+        # being the thing centering an overflowing child, which browsers
+        # tend to size and position inconsistently).
+        #
+        # The ACTUAL bug that was clipping the active nav pill: `flex-wrap`
+        # defaults to `wrap`-if-needed per flex container independently —
+        # it isn't inherited, and a `flex-nowrap` on an ancestor only stops
+        # THAT container's own direct children from wrapping. The two inner
+        # groups below (logo/nav on the left, counters/actions on the
+        # right) are each their OWN nested flex container, and neither had
+        # its own `flex-nowrap` — so once its content didn't fit, the LEFT
+        # group silently wrapped nav onto a second line inside itself
+        # (invisibly, since nothing here shows a wrap seam), and that
+        # second line got cut off against the header's fixed height. Every
+        # flex container in this header now sets its own `flex-nowrap`
+        # explicitly rather than relying on an ancestor's.
         with ui.element("header").classes(f'h-16 px-6 {bg("surface_lowest")} border-b {bd("outline_variant")} z-40 shrink-0'):
-            with ui.element("div").classes("flex flex-nowrap items-center justify-between gap-3 h-full overflow-x-auto"):
-                with ui.element("div").classes("flex items-center gap-3 min-w-0"):
-                    raw_html(
-                        f'<div class="flex items-center gap-2.5 shrink-0"><div class="w-8 h-8 rounded-xl {bg("primary")} text-white flex items-center justify-center font-bold text-sm shadow-sm">Z</div>'
-                        f'<div class="flex flex-col hdr-subtitle"><span class="text-[16px] font-bold tracking-tight {tx("on_surface")} leading-tight">Zen</span>'
-                        f'<span class="text-[10px] font-medium {tx("muted")} tracking-tight">Fraud Operations</span></div></div>'
-                    )
-                    raw_html(f'<div class="h-5 w-px {bg("outline_variant")} shrink-0"></div>')
-                    live_indicator()
-                    raw_html(
-                        f'<button title="Simulate Hiccup" class="flex items-center gap-1.5 px-3 py-1 {bg("surface_low")} hover:{bg("surface_container")} border {bd("outline_variant")} {tx("muted_dark")} hover:text-[{C["on_surface"]}] text-[11px] font-medium rounded-full transition-all active:scale-[0.98] shrink-0">'
-                        f'{icon("wifi_off", "text-[13px]")}<span class="hdr-label">Simulate Hiccup</span></button>'
-                    ).on("click", lambda e: toggle_hiccup())
-                    top_nav()
-                with ui.element("div").classes("flex items-center gap-3 shrink-0"):
-                    header_counters()
-                    raw_html(
-                        f'<button title="Export CSV" class="flex items-center gap-1.5 px-3.5 py-1.5 {bg("surface_lowest")} hover:{bg("surface_container")} border {bd("outline_variant")} {tx("on_surface")} text-[12px] font-semibold rounded-full shadow-sm transition-all active:scale-[0.98] shrink-0">'
-                        f'{icon("download", "text-[15px]")}<span class="inline hdr-label">Export CSV</span></button>'
-                    ).on("click", lambda e: export_csv())
-                    raw_html(
-                        f'<button title="Emergency Freeze" class="flex items-center gap-1.5 px-3.5 py-1.5 {bg("primary")} hover:bg-[{C["primary_hover"]}] text-white text-[12px] font-semibold rounded-full shadow-sm transition-all active:scale-[0.98] shrink-0 whitespace-nowrap">'
-                        f'{icon("lock_clock", "text-[15px]")}<span class="inline hdr-label-short">Emergency Freeze</span></button>'
-                    ).on("click", lambda e: emergency_freeze())
-                    raw_html(f'<div class="h-5 w-px {bg("outline_variant")} shrink-0"></div>')
-                    _analyst_name = session.get("display_name") or session.get("email", "?")
-                    _initials = "".join(w[0] for w in _analyst_name.split()[:2]).upper() or "?"
-                    raw_html(
-                        f'<div class="w-8 h-8 rounded-full {bg("surface_high")} border {bd("outline_variant")} flex items-center justify-center font-bold text-[11px] {tx("on_surface")} shrink-0" title="Signed in as {escape(session.get("email", ""))}">{escape(_initials)}</div>'
-                    )
-                    raw_html(
-                        f'<button title="Log out" class="p-1.5 {tx("muted")} hover:text-[{C["primary"]}] rounded-full hover:{bg("surface_low")} transition-colors shrink-0">{icon("logout", "text-[16px]")}</button>'
-                    ).on("click", lambda e: do_logout())
+            with ui.element("div").classes("h-full overflow-x-auto"):
+                with ui.element("div").classes("flex flex-nowrap items-center justify-between gap-3 h-full"):
+                    with ui.element("div").classes("flex flex-nowrap items-center gap-3 min-w-0"):
+                        raw_html(
+                            f'<div class="flex items-center gap-2.5 shrink-0"><div class="w-8 h-8 rounded-xl {bg("primary")} text-white flex items-center justify-center font-bold text-sm shadow-sm">Z</div>'
+                            f'<div class="flex flex-col hdr-subtitle"><span class="text-[16px] font-bold tracking-tight {tx("on_surface")} leading-tight">Zen</span>'
+                            f'<span class="text-[10px] font-medium {tx("muted")} tracking-tight">Fraud Operations</span></div></div>'
+                        )
+                        raw_html(f'<div class="h-5 w-px {bg("outline_variant")} shrink-0"></div>')
+                        live_indicator()
+                        raw_html(
+                            f'<button title="Simulate Hiccup" class="flex items-center gap-1.5 px-3 py-1 {bg("surface_low")} hover:{bg("surface_container")} border {bd("outline_variant")} {tx("muted_dark")} hover:text-[{C["on_surface"]}] text-[11px] font-medium rounded-full transition-all active:scale-[0.98] shrink-0">'
+                            f'{icon("wifi_off", "text-[13px]")}<span class="hdr-label">Simulate Hiccup</span></button>'
+                        ).on("click", lambda e: toggle_hiccup())
+                        top_nav()
+                    with ui.element("div").classes("flex flex-nowrap items-center gap-3 shrink-0"):
+                        header_counters()
+                        raw_html(
+                            f'<button title="Export CSV" class="flex items-center gap-1.5 px-3.5 py-1.5 {bg("surface_lowest")} hover:{bg("surface_container")} border {bd("outline_variant")} {tx("on_surface")} text-[12px] font-semibold rounded-full shadow-sm transition-all active:scale-[0.98] shrink-0">'
+                            f'{icon("download", "text-[15px]")}<span class="inline hdr-label">Export CSV</span></button>'
+                        ).on("click", lambda e: export_csv())
+                        raw_html(
+                            f'<button title="Emergency Freeze" class="flex items-center gap-1.5 px-3.5 py-1.5 {bg("primary")} hover:bg-[{C["primary_hover"]}] text-white text-[12px] font-semibold rounded-full shadow-sm transition-all active:scale-[0.98] shrink-0 whitespace-nowrap">'
+                            f'{icon("lock_clock", "text-[15px]")}<span class="inline hdr-label-short">Emergency Freeze</span></button>'
+                        ).on("click", lambda e: emergency_freeze())
+                        raw_html(f'<div class="h-5 w-px {bg("outline_variant")} shrink-0"></div>')
+                        _analyst_name = session.get("display_name") or session.get("email", "?")
+                        _initials = "".join(w[0] for w in _analyst_name.split()[:2]).upper() or "?"
+                        raw_html(
+                            f'<div class="w-8 h-8 rounded-full {bg("surface_high")} border {bd("outline_variant")} flex items-center justify-center font-bold text-[11px] {tx("on_surface")} shrink-0" title="Signed in as {escape(session.get("email", ""))}">{escape(_initials)}</div>'
+                        )
+                        raw_html(
+                            f'<button title="Log out" class="p-1.5 {tx("muted")} hover:text-[{C["primary"]}] rounded-full hover:{bg("surface_low")} transition-colors shrink-0">{icon("logout", "text-[16px]")}</button>'
+                        ).on("click", lambda e: do_logout())
 
         hiccup_banner()
         error_banner()
@@ -1318,7 +1328,7 @@ def dashboard_page() -> None:
                 with ui.element("div"):
                     raw_html(
                         f'<div class="{bg("surface_low")} p-3 rounded-xl border {bd("outline_subtle")} mb-3.5 flex items-center justify-between">'
-                        f'<div><div class="text-[12px] font-bold {tx("on_surface")}">SOC-US-EAST</div>'
+                        f'<div><div class="text-[12px] font-bold {tx("on_surface")}">SOC-IN-MUMBAI</div>'
                         '<div class="text-[10px] font-semibold text-emerald-700 flex items-center gap-1.5 mt-0.5">'
                         '<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>CLUSTER HEALTHY</div></div>'
                         f'{icon("dns", tx("muted") + " text-[18px]")}</div>'
