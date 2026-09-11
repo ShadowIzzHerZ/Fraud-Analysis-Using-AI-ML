@@ -30,6 +30,11 @@ from app.state import state
 
 app.add_static_files("/static", str(Path(__file__).parent / "static"))
 
+# theme.css is served with a long cache-control max-age; without a
+# cache-busting query param, browsers (and this dev environment) can keep
+# serving a stale copy across restarts even after the file changes on disk.
+_THEME_CSS_VERSION = int((Path(__file__).parent / "static" / "theme.css").stat().st_mtime)
+
 # -- palette ("Warm Civic Minimal", from docs/stitch/DESIGN.md) --------------
 C = {
     "primary": "#b8431e",
@@ -359,11 +364,11 @@ def dashboard_page() -> None:
         '<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800'
         '&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">'
         '<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">'
-        '<link rel="stylesheet" href="/static/theme.css">'
+        f'<link rel="stylesheet" href="/static/theme.css?v={_THEME_CSS_VERSION}">'
         '<style>body,.font-sans{font-family:"Plus Jakarta Sans",ui-sans-serif,sans-serif}'
         '.font-mono,table,input,textarea{font-family:"JetBrains Mono",ui-monospace,monospace}</style>'
     )
-    ui.page_title("RiskPulse — Fraud Operations Console")
+    ui.page_title("Zen — Fraud Operations Console")
 
     # -- handlers --------------------------------------------------------------
     def refresh_after_alert_change() -> None:
@@ -556,8 +561,8 @@ def dashboard_page() -> None:
                 raw_html(
                     f'<div class="flex items-center gap-2.5">{icon("warning", "text-amber-700 text-[18px]")}'
                     '<span class="font-bold text-amber-900 text-[12px]">STREAM DEGRADED:</span>'
-                    '<span class="text-[12px] text-amber-800">WebSocket heartbeat delayed (~342ms). Displaying cached telemetry without packet drop.</span></div>'
-                    '<span class="font-mono text-[10px] bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full font-bold">FALLBACK BUFFER</span>'
+                    '<span class="text-[12px] text-amber-800">WebSocket heartbeat delayed (~342ms). Displaying cached telemetry without packet drop.</span>'
+                    '<span class="font-mono text-[10px] bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full font-bold">FALLBACK BUFFER</span></div>'
                 )
                 ui.button("Dismiss", on_click=toggle_hiccup).props("flat dense").classes("text-[12px] font-semibold text-[#b8431e]")
 
@@ -958,8 +963,10 @@ def dashboard_page() -> None:
                 with ui.element("div").classes("flex items-center gap-3"):
                     ui.switch(value=state.policy.auto_freeze_enabled, on_change=on_policy_toggle).props('color="#b8431e" dense')
                     raw_html(f'<span class="text-[13px] font-semibold {tx("on_surface")}">Automatically freeze any alert scoring at or above</span>')
-                    ui.number(value=state.policy.auto_freeze_threshold, min=0.0, max=1.0, step=0.05, on_change=on_threshold_change) \
-                        .props("dense outlined").classes(f'w-16 text-[13px] {tx("primary")} font-bold text-center')
+                    ui.number(value=state.policy.auto_freeze_threshold, min=0.0, max=1.0, step=0.05,
+                              on_change=on_threshold_change, format="%.2f") \
+                        .props('dense outlined input-class="text-center"') \
+                        .classes(f'w-20 threshold-input text-[13px] {tx("primary")} font-bold')
                 raw_html(
                     f'<div class="text-[11px] {tx("muted")} mt-2">Emergency Freeze (top bar) ignores this threshold and always '
                     f'freezes every open alert scoring ≥ 0.80 immediately.</div>'
@@ -1121,8 +1128,10 @@ def dashboard_page() -> None:
             with ui.element("div").classes(f'flex items-center gap-2 px-3 py-1 {bg("surface_low")} rounded-full border {bd("outline_variant")}'):
                 ui.switch(value=state.policy.auto_freeze_enabled, on_change=on_policy_toggle).props('color="#b8431e" dense')
                 raw_html(f'<span class="text-[11px] font-bold {tx("on_surface")}">Auto-Freeze ≥</span>')
-                ui.number(value=state.policy.auto_freeze_threshold, min=0.0, max=1.0, step=0.05, on_change=on_threshold_change) \
-                    .props("dense borderless").classes(f'w-12 {bg("surface_lowest")} border {bd("outline_variant")} rounded px-1 text-[11px] {tx("primary")} font-bold text-center')
+                ui.number(value=state.policy.auto_freeze_threshold, min=0.0, max=1.0, step=0.05,
+                          on_change=on_threshold_change, format="%.2f") \
+                    .props('dense borderless input-class="text-center"') \
+                    .classes(f'w-14 threshold-input {bg("surface_lowest")} border {bd("outline_variant")} rounded-full px-1 text-[11px] {tx("primary")} font-bold')
 
         with ui.element("div").classes("flex-1 flex overflow-hidden px-4 pb-4 gap-3.5 min-h-0"):
             with ui.element("div").classes(f'flex-1 flex flex-col min-w-0 {bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm overflow-hidden'):
@@ -1215,30 +1224,30 @@ def dashboard_page() -> None:
         with ui.element("header").classes(f'flex flex-nowrap items-center justify-between px-6 h-16 {bg("surface_lowest")} border-b {bd("outline_variant")} z-40 shrink-0 gap-3 overflow-x-auto'):
             with ui.element("div").classes("flex items-center gap-3 min-w-0"):
                 raw_html(
-                    f'<div class="flex items-center gap-2.5 shrink-0"><div class="w-8 h-8 rounded-xl {bg("primary")} text-white flex items-center justify-center font-bold text-sm shadow-sm">R</div>'
-                    f'<div class="flex flex-col"><span class="text-[16px] font-bold tracking-tight {tx("on_surface")} leading-tight">RiskPulse</span>'
+                    f'<div class="flex items-center gap-2.5 shrink-0"><div class="w-8 h-8 rounded-xl {bg("primary")} text-white flex items-center justify-center font-bold text-sm shadow-sm">Z</div>'
+                    f'<div class="flex flex-col hdr-subtitle"><span class="text-[16px] font-bold tracking-tight {tx("on_surface")} leading-tight">Zen</span>'
                     f'<span class="text-[10px] font-medium {tx("muted")} tracking-tight">Fraud Operations</span></div></div>'
-                    f'<div class="h-5 w-px {bg("outline_variant")} shrink-0"></div>'
                 )
+                raw_html(f'<div class="h-5 w-px {bg("outline_variant")} shrink-0"></div>')
                 live_indicator()
                 raw_html(
-                    f'<button class="flex items-center gap-1.5 px-3 py-1 {bg("surface_low")} hover:{bg("surface_container")} border {bd("outline_variant")} {tx("muted_dark")} hover:text-[{C["on_surface"]}] text-[11px] font-medium rounded-full transition-all active:scale-[0.98] shrink-0">'
-                    f'{icon("wifi_off", "text-[13px]")}<span>Simulate Hiccup</span></button>'
+                    f'<button title="Simulate Hiccup" class="flex items-center gap-1.5 px-3 py-1 {bg("surface_low")} hover:{bg("surface_container")} border {bd("outline_variant")} {tx("muted_dark")} hover:text-[{C["on_surface"]}] text-[11px] font-medium rounded-full transition-all active:scale-[0.98] shrink-0">'
+                    f'{icon("wifi_off", "text-[13px]")}<span class="hdr-label">Simulate Hiccup</span></button>'
                 ).on("click", lambda e: toggle_hiccup())
                 top_nav()
             with ui.element("div").classes("flex items-center gap-3 shrink-0"):
                 header_counters()
                 raw_html(
-                    f'<button class="flex items-center gap-1.5 px-3.5 py-1.5 {bg("surface_lowest")} hover:{bg("surface_container")} border {bd("outline_variant")} {tx("on_surface")} text-[12px] font-semibold rounded-full shadow-sm transition-all active:scale-[0.98]">'
-                    f'{icon("download", "text-[15px]")}<span class="inline">Export CSV</span></button>'
+                    f'<button title="Export CSV" class="flex items-center gap-1.5 px-3.5 py-1.5 {bg("surface_lowest")} hover:{bg("surface_container")} border {bd("outline_variant")} {tx("on_surface")} text-[12px] font-semibold rounded-full shadow-sm transition-all active:scale-[0.98] shrink-0">'
+                    f'{icon("download", "text-[15px]")}<span class="inline hdr-label">Export CSV</span></button>'
                 ).on("click", lambda e: export_csv())
                 raw_html(
-                    f'<button class="flex items-center gap-1.5 px-3.5 py-1.5 {bg("primary")} hover:bg-[{C["primary_hover"]}] text-white text-[12px] font-semibold rounded-full shadow-sm transition-all active:scale-[0.98]">'
-                    f'{icon("lock_clock", "text-[15px]")}<span class="inline">Emergency Freeze</span></button>'
+                    f'<button title="Emergency Freeze" class="flex items-center gap-1.5 px-3.5 py-1.5 {bg("primary")} hover:bg-[{C["primary_hover"]}] text-white text-[12px] font-semibold rounded-full shadow-sm transition-all active:scale-[0.98] shrink-0 whitespace-nowrap">'
+                    f'{icon("lock_clock", "text-[15px]")}<span class="inline hdr-label-short">Emergency Freeze</span></button>'
                 ).on("click", lambda e: emergency_freeze())
+                raw_html(f'<div class="h-5 w-px {bg("outline_variant")} shrink-0"></div>')
                 raw_html(
-                    f'<div class="h-5 w-px {bg("outline_variant")}"></div>'
-                    f'<div class="w-8 h-8 rounded-full {bg("surface_high")} border {bd("outline_variant")} flex items-center justify-center font-bold text-[11px] {tx("on_surface")}" title="Investigator SOC Profile">SOC</div>'
+                    f'<div class="w-8 h-8 rounded-full {bg("surface_high")} border {bd("outline_variant")} flex items-center justify-center font-bold text-[11px] {tx("on_surface")} shrink-0" title="Investigator SOC Profile">SOC</div>'
                 )
 
         hiccup_banner()
@@ -1281,8 +1290,8 @@ def dashboard_page() -> None:
                         with ui.element("div").classes("flex items-center gap-2"):
                             raw_html(
                                 f'<div class="w-7 h-7 rounded-full {bg("primary_container")} {tx("primary")} flex items-center justify-center">{icon("travel_explore", "text-[15px]")}</div>'
-                                f'<span class="font-bold text-[14px] {tx("on_surface")}">Case Dossier</span>'
                             )
+                            raw_html(f'<span class="font-bold text-[14px] {tx("on_surface")}">Case Dossier</span>')
                             drawer_status_badge()
                         raw_html(f'<button class="p-1 {tx("muted")} hover:text-[{C["on_surface"]}] rounded-full hover:{bg("surface_high")} transition-colors">{icon("close", "text-[18px]")}</button>') \
                             .on("click", lambda e: close_drawer())

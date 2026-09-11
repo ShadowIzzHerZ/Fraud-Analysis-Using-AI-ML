@@ -28,4 +28,8 @@ async def _simulation_loop() -> None:
 app.on_startup(_simulation_loop)
 
 if __name__ in {"__main__", "__mp_main__"}:
-    ui.run(title="RiskPulse — Fraud Ops", dark=True, reload=False, port=8080, show=False)
+    # dark=False: the UI is the light "Warm Civic Minimal" theme, not the
+    # earlier dark-ops design — dark=True left every native Quasar input
+    # (search box, Channel select, Auto-Freeze threshold) rendering white
+    # text on our light surfaces, i.e. invisible.
+    ui.run(title="Zen — Fraud Ops", dark=False, reload=False, port=8080, show=False)

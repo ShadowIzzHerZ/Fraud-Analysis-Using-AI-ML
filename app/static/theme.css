@@ -1,4 +1,4 @@
-/* RiskPulse — "Warm Civic Minimal" theme.
+/* Zen — "Warm Civic Minimal" theme.
    Most visual styling now lives inline as Tailwind utility classes in
    app/ui_dashboard.py (NiceGUI ships the Tailwind Play CDN runtime, same as
    this design was authored against). This file only carries what utility
@@ -45,3 +45,31 @@ body { overflow: hidden; }
 /* Detail drawer slides by width (matches the reference), not transform,
    so it never overlaps content or needs a fixed viewport position. */
 #investigation-drawer { transition: width .22s ease-in-out; }
+
+/* Auto-Freeze threshold inputs (ui.number): the native browser spin buttons
+   render as a cramped, unstyled up/down stack that clashes with the flat
+   pill design and, at the small widths these boxes use, can crowd out the
+   digits entirely. Hide the native spinner; typing/scroll still works. */
+.threshold-input input[type="number"] { -moz-appearance: textfield; }
+.threshold-input input[type="number"]::-webkit-inner-spin-button,
+.threshold-input input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* The top bar is intentionally a fixed, dense desktop layout (see README),
+   but on narrower windows it was overflowing so far that Emergency Freeze
+   and the SOC avatar sat off-screen with no visible way to reach them
+   short of guessing there was horizontal scroll. Progressively shed the
+   least essential chrome first so the critical, right-most controls stay
+   in (or much closer to) view. */
+@media (max-width: 1300px) {
+  header .hdr-subtitle { display: none; }
+}
+@media (max-width: 1150px) {
+  header .hdr-label { display: none; }
+  header { gap: 0.5rem !important; padding-left: 1rem !important; padding-right: 1rem !important; }
+}
+@media (max-width: 980px) {
+  header .hdr-label-short { display: none; }
+}

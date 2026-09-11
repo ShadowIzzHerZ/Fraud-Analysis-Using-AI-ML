@@ -1,6 +1,7 @@
-# RiskPulse — Real-Time Anomaly Detection for Fraud Prevention
+# Zen — Real-Time Anomaly Detection for Fraud Prevention
 
-A hackathon demo (per [`docs/PRD.md`](docs/PRD.md)) that ingests a simulated live
+A hackathon demo (originally named "RiskPulse" in [`docs/PRD.md`](docs/PRD.md),
+now shipped as **Zen**) that ingests a simulated live
 transaction stream, scores every event on ingest with an explainable rules +
 statistical engine, and gives a fraud analyst an ops console to triage and act
 on what fires. The UI follows a "Warm Civic Minimal" visual system generated
