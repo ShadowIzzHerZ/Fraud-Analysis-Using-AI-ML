@@ -555,10 +555,19 @@ def dashboard_page() -> None:
         )
 
     # -- refreshables --------------------------------------------------------------
+    # Glass material, per Apple HIG: content behind stays visible through a
+    # blurred, saturated, translucent layer — never an opaque flat fill —
+    # separated from what's underneath by that blur plus a hairline edge
+    # and a soft shadow, rather than by a hard color boundary.
+    GLASS_BANNER = (
+        "w-full glass-banner bg-amber-50/70 backdrop-blur-md backdrop-saturate-150 "
+        "border-b border-amber-200/60 shadow-sm px-6 py-2.5 flex items-center justify-between relative z-30"
+    )
+
     @ui.refreshable
     def error_banner() -> None:
         if state.stream_error:
-            with ui.element("div").classes(f'w-full bg-amber-50 border-b border-amber-200 px-6 py-2 flex items-center justify-between'):
+            with ui.element("div").classes(GLASS_BANNER):
                 raw_html(
                     f'<div class="flex items-center gap-2.5">{icon("warning", "text-amber-700 text-[18px]")}'
                     f'<span class="font-bold text-amber-900 text-[12px]">BACKEND ERROR:</span>'
@@ -569,12 +578,12 @@ def dashboard_page() -> None:
     @ui.refreshable
     def hiccup_banner() -> None:
         if filters.hiccup:
-            with ui.element("div").classes("w-full bg-amber-50 border-b border-amber-200 px-6 py-2 flex items-center justify-between"):
+            with ui.element("div").classes(GLASS_BANNER):
                 raw_html(
                     f'<div class="flex items-center gap-2.5">{icon("warning", "text-amber-700 text-[18px]")}'
                     '<span class="font-bold text-amber-900 text-[12px]">STREAM DEGRADED:</span>'
                     '<span class="text-[12px] text-amber-800">WebSocket heartbeat delayed (~342ms). Displaying cached telemetry without packet drop.</span>'
-                    '<span class="font-mono text-[10px] bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full font-bold">FALLBACK BUFFER</span></div>'
+                    '<span class="font-mono text-[10px] bg-amber-100/80 backdrop-blur-sm text-amber-900 px-2 py-0.5 rounded-full font-bold border border-amber-200/60">FALLBACK BUFFER</span></div>'
                 )
                 ui.button("Dismiss", on_click=toggle_hiccup).props("flat dense").classes("text-[12px] font-semibold text-[#b8431e]")
 

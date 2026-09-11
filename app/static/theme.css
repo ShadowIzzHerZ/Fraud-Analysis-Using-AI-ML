@@ -42,6 +42,18 @@ body { overflow: hidden; }
 .flash-new-tx { animation: row-flash-light 1.4s ease-out; }
 .flash-new-alert { animation: alert-flash-light 1.8s ease-out; }
 
+/* Glass material for the top notification banners (stream-degraded /
+   backend-error) — Apple HIG materials: translucent + blurred + saturated,
+   never an opaque flat fill, with a soft inner top highlight to read as a
+   pane of glass catching light rather than a painted bar. backdrop-filter
+   is set here directly (not left to Tailwind's backdrop-* utilities alone)
+   so the blur is guaranteed regardless of which Tailwind build is loaded. */
+.glass-banner {
+  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.55) inset, 0 4px 20px rgba(120, 53, 15, 0.07);
+}
+
 /* Auth screen (login/signup): subtle diagonal-stripe backdrop behind the
    card, and a shake to draw the eye to an error without a toast alone. */
 .auth-stripes {
