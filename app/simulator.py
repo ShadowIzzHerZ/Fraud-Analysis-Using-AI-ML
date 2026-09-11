@@ -101,6 +101,10 @@ CARDS: list[SimCard] = [_make_card(i) for i in range(CARD_POOL_SIZE)]
 CARD_BY_TOKEN = {c.card_token: c for c in CARDS}
 
 
+def _random_ip() -> str:
+    return f"{random.randrange(10, 223)}.{random.randrange(0, 255)}.{random.randrange(0, 255)}.{random.randrange(1, 255)}"
+
+
 def _pick_merchant(card: SimCard) -> tuple[str, str, str]:
     if random.random() < 0.7:
         candidates = [m for m in MERCHANTS if m[1] in card.mcc_habits]
@@ -149,6 +153,7 @@ def generate_normal_transaction(now: float) -> Transaction:
         device_fp=device,
         card_token=card.card_token,
         user_id=card.user_id,
+        ip=_random_ip(),
     )
 
 
@@ -178,6 +183,7 @@ def _mk(card: SimCard, ts: float, name: str, mcc: str, category: str, amount: fl
         device_fp=device or random.choice(card.devices),
         card_token=card.card_token,
         user_id=card.user_id,
+        ip=_random_ip(),
         scenario=scenario,
     )
 

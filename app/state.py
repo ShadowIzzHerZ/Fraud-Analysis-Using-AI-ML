@@ -120,6 +120,7 @@ class AppState:
         self.events_total = 0
         self.alerts_total = 0
         self.frozen_total = 0
+        self.prevented_total = 0.0  # cumulative $ of every alert ever frozen
         self.started_at = time.time()
         self.stream_error: Optional[str] = None
 
@@ -162,8 +163,26 @@ class AppState:
         alert.log(f"{old.value} → {status.value}")
         if status == AlertStatus.FROZEN:
             self.frozen_total += 1
+            self.prevented_total += alert.transaction.amount
         self.version += 1
         return alert
+
+    def emergency_freeze(self, min_score: float = 0.80) -> list[Alert]:
+        """Immediately freeze every open (new/investigating) alert at or above
+        min_score — the "stop everything now" override for a live incident,
+        independent of the (possibly lower) configured auto-freeze threshold."""
+        frozen: list[Alert] = []
+        for aid in self.alert_order:
+            alert = self.alerts.get(aid)
+            if alert and alert.status in OPEN_STATUSES and alert.score.risk_score >= min_score:
+                alert.status = AlertStatus.FROZEN
+                alert.log("Emergency freeze — bulk trigger")
+                self.frozen_total += 1
+                self.prevented_total += alert.transaction.amount
+                frozen.append(alert)
+        if frozen:
+            self.version += 1
+        return frozen
 
     # -- derived / KPIs -------------------------------------------------------------
     def recent_feed(self, card_token: Optional[str] = None, limit: Optional[int] = None) -> list[tuple[Transaction, ScoreResult]]:

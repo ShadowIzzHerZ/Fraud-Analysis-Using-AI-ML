@@ -1,0 +1,1518 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RiskPulse — Payment Risk &amp; Fraud Operations Console</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "primary": "#b8431e",
+          "primary-hover": "#9e391b",
+          "primary-container": "#ffe5de",
+          "on-primary": "#ffffff",
+          "on-primary-container": "#3a0a00",
+          "background": "#f7f5f0",
+          "surface": "#fbf9f5",
+          "surface-container-lowest": "#ffffff",
+          "surface-container-low": "#f4f1ea",
+          "surface-container": "#ede9e0",
+          "surface-container-high": "#e5e1d6",
+          "surface-container-highest": "#ded9cd",
+          "outline": "#8c716a",
+          "outline-variant": "#e5e1d8",
+          "outline-subtle": "#ece8de",
+          "on-surface": "#1b1c1a",
+          "on-surface-variant": "#58423b",
+          "muted": "#76726c",
+          "muted-dark": "#4a4742",
+          "emerald-accent": "#059669",
+          "emerald-soft": "#ecfdf5",
+          "amber-accent": "#d97706",
+          "amber-soft": "#fffbeb",
+          "rose-accent": "#dc2626",
+          "rose-soft": "#fef2f2"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.375rem",
+          "lg": "0.625rem",
+          "xl": "0.875rem",
+          "2xl": "1.125rem",
+          "full": "9999px"
+        },
+        "fontFamily": {
+          "sans": ["Plus Jakarta Sans", "sans-serif"],
+          "mono": ["JetBrains Mono", "monospace"]
+        }
+      }
+    }
+  }
+</script>
+<style>
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 450, 'GRAD' 0, 'opsz' 20;
+    font-size: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+  }
+  .material-symbols-outlined.fill-icon {
+    font-variation-settings: 'FILL' 1;
+  }
+
+  /* Refined smooth scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #f7f5f0;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #dad5ca;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #c3bdad;
+  }
+
+  @keyframes row-flash-light {
+    0% { background-color: rgba(184, 67, 30, 0.12); }
+    100% { background-color: transparent; }
+  }
+  @keyframes alert-flash-light {
+    0% { background-color: rgba(220, 38, 38, 0.12); }
+    100% { background-color: transparent; }
+  }
+  .flash-new-tx {
+    animation: row-flash-light 1.4s ease-out;
+  }
+  .flash-new-alert {
+    animation: alert-flash-light 1.8s ease-out;
+  }
+</style>
+</head>
+<body class="bg-background text-on-surface font-sans antialiased overflow-hidden select-none h-screen flex flex-col">
+<!-- TOP APP BAR -->
+<header class="flex items-center justify-between px-6 h-16 bg-surface-container-lowest border-b border-outline-variant z-40 shrink-0 gap-4">
+<!-- Brand & Status & Nav -->
+<div class="flex items-center gap-4 xl:gap-6 min-w-0">
+<!-- Brand -->
+<div class="flex items-center gap-2.5 shrink-0">
+<div class="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center font-bold text-sm shadow-sm">
+        R
+      </div>
+<div class="flex flex-col">
+<span class="text-[16px] font-bold tracking-tight text-on-surface leading-tight">RiskPulse</span>
+<span class="text-[10px] font-medium text-muted tracking-tight">Fraud Operations</span>
+</div>
+</div>
+<div class="h-5 w-px bg-outline-variant shrink-0"></div>
+<!-- Live Stream Indicator -->
+<div class="flex items-center gap-2 bg-surface-container-low px-3 py-1 rounded-full border border-outline-variant text-[12px] shrink-0">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-accent opacity-75" id="stream-ping-dot"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-accent" id="stream-status-dot"></span>
+</span>
+<span class="font-bold text-emerald-700 uppercase tracking-wide text-[10px]" id="stream-status-text">Stream Active</span>
+<span class="text-muted text-[10px]">·</span>
+<span class="font-mono text-[11px] text-muted-dark font-medium" id="stream-latency">18ms</span>
+</div>
+<!-- Simulate Hiccup Button -->
+<button class="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-surface-container-low hover:bg-surface-container border border-outline-variant text-muted-dark hover:text-on-surface text-[11px] font-medium rounded-full transition-all active:scale-[0.98] shrink-0" id="btn-toggle-hiccup" onclick="toggleNetworkHiccup()">
+<span class="material-symbols-outlined text-[13px]" data-icon="wifi_off">wifi_off</span>
+<span>Simulate Hiccup</span>
+</button>
+<!-- Navigation Links -->
+<nav class="hidden lg:flex items-center gap-1 shrink-0">
+<button class="text-primary font-semibold text-[13px] px-3.5 py-1 rounded-full bg-primary-container/70 border border-primary/20">Console</button>
+<button class="text-muted-dark hover:text-on-surface hover:bg-surface-container-low font-medium text-[13px] px-3 py-1 rounded-full transition-colors">Simulation</button>
+<button class="text-muted-dark hover:text-on-surface hover:bg-surface-container-low font-medium text-[13px] px-3 py-1 rounded-full transition-colors">Policies</button>
+<button class="text-muted-dark hover:text-on-surface hover:bg-surface-container-low font-medium text-[13px] px-3 py-1 rounded-full transition-colors">Audit Logs</button>
+</nav>
+</div>
+<!-- Trailing Actions & Persistent Counters -->
+<div class="flex items-center gap-3 shrink-0">
+<!-- Live Ingestion Metrics Pill -->
+<div class="hidden xl:flex items-center gap-2 bg-surface-container-low px-3.5 py-1 rounded-full border border-outline-variant text-[11px] font-mono">
+<div class="flex items-center gap-1">
+<span class="text-muted text-[10px] uppercase">Processed:</span>
+<span class="text-on-surface font-semibold" id="counter-total">18,441</span>
+</div>
+<span class="text-outline-variant font-sans">/</span>
+<div class="flex items-center gap-1">
+<span class="text-rose-600 font-semibold" id="counter-alerts">5</span>
+<span class="text-rose-700 text-[10px] uppercase">Alerts</span>
+</div>
+<span class="text-outline-variant font-sans">/</span>
+<div class="flex items-center gap-1">
+<span class="text-primary font-semibold" id="counter-frozen">18</span>
+<span class="text-muted text-[10px] uppercase">Frozen</span>
+</div>
+</div>
+<!-- Export CSV button -->
+<button class="flex items-center gap-1.5 px-3.5 py-1.5 bg-surface-container-lowest hover:bg-surface-container border border-outline-variant text-on-surface text-[12px] font-semibold rounded-full shadow-sm transition-all active:scale-[0.98]" onclick="downloadAlertsCSV()" title="Export flagged alerts as CSV">
+<span class="material-symbols-outlined text-[15px]" data-icon="download">download</span>
+<span class="hidden sm:inline">Export CSV</span>
+</button>
+<!-- Emergency Freeze -->
+<button class="flex items-center gap-1.5 px-3.5 py-1.5 bg-primary hover:bg-primary-hover text-white text-[12px] font-semibold rounded-full shadow-sm transition-all active:scale-[0.98]" onclick="triggerEmergencyFreeze()">
+<span class="material-symbols-outlined text-[15px]" data-icon="lock_clock">lock_clock</span>
+<span class="hidden md:inline">Emergency Freeze</span>
+</button>
+<div class="h-5 w-px bg-outline-variant"></div>
+<!-- Investigator Profile -->
+<div class="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center font-bold text-[11px] text-on-surface shadow-inner" title="Investigator SOC Profile">
+      SOC
+    </div>
+</div>
+</header>
+<!-- Network Hiccup Warning Banner -->
+<div class="hidden w-full bg-amber-50 border-b border-amber-200 px-6 py-2 flex items-center justify-between z-30 transition-all shrink-0" id="hiccup-banner">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-amber-700 text-[18px]" data-icon="warning">warning</span>
+<span class="font-bold text-amber-900 text-[12px]">STREAM DEGRADED:</span>
+<span class="text-[12px] text-amber-800">WebSocket heartbeat delayed (~342ms). Displaying cached telemetry without packet drop.</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-mono text-[10px] bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full font-bold">FALLBACK BUFFER</span>
+<button class="text-[12px] font-semibold text-primary hover:underline" onclick="toggleNetworkHiccup()">Dismiss</button>
+</div>
+</div>
+<!-- MAIN BODY LAYOUT -->
+<div class="flex flex-1 overflow-hidden">
+<!-- DESKTOP RAIL / SIDE NAV -->
+<aside class="w-56 shrink-0 bg-surface-container-lowest border-r border-outline-variant flex flex-col justify-between p-3.5 select-none hidden lg:flex">
+<div>
+<!-- Cluster Status -->
+<div class="bg-surface-container-low p-3 rounded-xl border border-outline-subtle mb-3.5 flex items-center justify-between">
+<div>
+<div class="text-[12px] font-bold text-on-surface">SOC-US-EAST</div>
+<div class="text-[10px] font-semibold text-emerald-700 flex items-center gap-1.5 mt-0.5">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+            CLUSTER HEALTHY
+          </div>
+</div>
+<span class="material-symbols-outlined text-muted text-[18px]" data-icon="dns">dns</span>
+</div>
+<!-- Rail Navigation -->
+<nav class="space-y-1">
+<button class="w-full flex items-center gap-2.5 px-3 py-2 bg-primary-container/60 text-primary font-semibold text-[13px] rounded-xl transition-all">
+<span class="material-symbols-outlined text-[17px]" data-icon="stream">stream</span>
+<span>Live Stream</span>
+</button>
+<button class="w-full flex items-center justify-between px-3 py-2 text-muted-dark hover:text-on-surface hover:bg-surface-container-low font-medium text-[13px] rounded-xl transition-all">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-[17px]" data-icon="warning">warning</span>
+<span>Alerts Queue</span>
+</div>
+<span class="bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono" id="rail-alert-badge">5</span>
+</button>
+<button class="w-full flex items-center gap-2.5 px-3 py-2 text-muted-dark hover:text-on-surface hover:bg-surface-container-low font-medium text-[13px] rounded-xl transition-all">
+<span class="material-symbols-outlined text-[17px]" data-icon="travel_explore">travel_explore</span>
+<span>Investigation</span>
+</button>
+<button class="w-full flex items-center gap-2.5 px-3 py-2 text-muted-dark hover:text-on-surface hover:bg-surface-container-low font-medium text-[13px] rounded-xl transition-all">
+<span class="material-symbols-outlined text-[17px]" data-icon="shield">shield</span>
+<span>Policy Rules</span>
+</button>
+<button class="w-full flex items-center gap-2.5 px-3 py-2 text-muted-dark hover:text-on-surface hover:bg-surface-container-low font-medium text-[13px] rounded-xl transition-all">
+<span class="material-symbols-outlined text-[17px]" data-icon="monitoring">monitoring</span>
+<span>Telemetry</span>
+</button>
+</nav>
+<!-- System Stat -->
+<div class="mt-5 p-3 bg-surface-container-low rounded-xl border border-outline-subtle">
+<div class="flex justify-between items-center text-[10px] font-semibold text-muted mb-1.5 uppercase tracking-wider">
+<span>RULE ENGINE LOAD</span>
+<span class="text-on-surface font-mono font-bold">4.2K OPS/S</span>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full transition-all duration-300" style="width: 44%;"></div>
+</div>
+<div class="text-[10px] font-mono text-muted mt-1.5 text-right">Pipeline: 44% capacity</div>
+</div>
+</div>
+<!-- Rail Footer -->
+<div class="space-y-1 border-t border-outline-variant/70 pt-3">
+<button class="w-full flex items-center gap-2 px-2 py-1.5 text-muted hover:text-on-surface text-[12px] font-medium transition-colors">
+<span class="material-symbols-outlined text-[16px]" data-icon="help">help</span>
+<span>Documentation</span>
+</button>
+<button class="w-full flex items-center gap-2 px-2 py-1.5 text-muted hover:text-on-surface text-[12px] font-medium transition-colors">
+<span class="material-symbols-outlined text-[16px]" data-icon="dns">dns</span>
+<span>Diagnostics</span>
+</button>
+<div class="text-[10px] font-mono text-muted text-center pt-1">
+        v4.18.2-PROD · US-E1
+      </div>
+</div>
+</aside>
+<!-- CONTENT WORKSPACE -->
+<main class="flex-1 flex flex-col min-w-0 bg-background overflow-hidden">
+<!-- TOP OVERVIEW STRIP: 4 REFINED KPI CARDS -->
+<section class="grid grid-cols-2 lg:grid-cols-4 gap-3.5 p-4 pb-2.5 shrink-0">
+<!-- KPI 1: Throughput -->
+<div class="bg-surface-container-lowest border border-outline-variant p-3.5 rounded-2xl shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="text-[10px] font-bold uppercase tracking-wider text-muted">THROUGHPUT</span>
+<span class="flex items-center text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full text-[10px] font-bold">
+<span class="material-symbols-outlined text-[11px] mr-0.5" data-icon="arrow_upward">arrow_upward</span> +8.4%
+          </span>
+</div>
+<div class="my-2">
+<div class="text-2xl font-extrabold tracking-tight text-on-surface flex items-baseline gap-1 font-mono">
+<span id="kpi-throughput">243</span>
+<span class="text-xs font-normal text-muted font-sans">events/min</span>
+</div>
+</div>
+<svg class="w-full h-4 text-primary stroke-current fill-none opacity-75" preserveaspectratio="none" viewbox="0 0 100 20">
+<path d="M0,15 Q15,4 30,12 T60,6 T85,16 L100,8" stroke-linecap="round" stroke-width="2"></path>
+</svg>
+</div>
+<!-- KPI 2: Open Alerts -->
+<div class="bg-surface-container-lowest border border-outline-variant p-3.5 rounded-2xl shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="text-[10px] font-bold uppercase tracking-wider text-muted">OPEN ALERTS</span>
+<span class="text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center">
+<span class="material-symbols-outlined text-[11px] mr-0.5" data-icon="warning">warning</span> Critical: <span class="ml-1" id="kpi-critical-count">1</span>
+</span>
+</div>
+<div class="my-2">
+<div class="text-2xl font-extrabold tracking-tight text-on-surface flex items-baseline gap-1 font-mono">
+<span id="kpi-open-alerts">5</span>
+<span class="text-xs font-normal text-muted font-sans">queued</span>
+</div>
+</div>
+<div class="w-full bg-surface-container-high h-2 rounded-full overflow-hidden flex">
+<div class="bg-rose-500 h-full" style="width: 25%;"></div>
+<div class="bg-amber-500 h-full" style="width: 50%;"></div>
+<div class="bg-emerald-500 h-full" style="width: 25%;"></div>
+</div>
+</div>
+<!-- KPI 3: Frozen (15m) -->
+<div class="bg-surface-container-lowest border border-outline-variant p-3.5 rounded-2xl shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="text-[10px] font-bold uppercase tracking-wider text-muted">FROZEN (15M)</span>
+<span class="text-primary bg-primary-container/80 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider">BLOCKED</span>
+</div>
+<div class="my-2">
+<div class="text-2xl font-extrabold tracking-tight text-on-surface flex items-baseline gap-1 font-mono">
+<span id="kpi-frozen-count">18</span>
+<span class="text-xs font-normal text-muted font-sans">cards halted</span>
+</div>
+</div>
+<div class="text-[11px] font-semibold text-primary flex items-center justify-between">
+<span id="kpi-frozen-rupees">₹90,259 prevented</span>
+<span class="material-symbols-outlined text-[14px]" data-icon="shield">shield</span>
+</div>
+</div>
+<!-- KPI 4: Value At Risk -->
+<div class="bg-surface-container-lowest border border-outline-variant p-3.5 rounded-2xl shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="text-[10px] font-bold uppercase tracking-wider text-muted">VALUE AT RISK (15M)</span>
+<span class="text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider">VELOCITY ALERT</span>
+</div>
+<div class="my-2">
+<div class="text-2xl font-extrabold tracking-tight text-on-surface flex items-baseline gap-1 font-mono">
+<span id="kpi-var-amount">₹1,44,519</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<div class="flex-1 bg-surface-container-high h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 72%;"></div>
+</div>
+<span class="text-[10px] font-mono font-semibold text-muted">72% MAX</span>
+</div>
+</div>
+</section>
+<!-- POLICY & SIMULATOR CONTROL BAR -->
+<section class="mx-4 mb-3 px-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-2xl flex flex-wrap items-center justify-between gap-3 shrink-0 shadow-sm">
+<!-- Stream Controls & Rate -->
+<div class="flex items-center gap-2.5">
+<button class="flex items-center gap-1.5 px-3.5 py-1.5 bg-primary hover:bg-primary-hover text-white rounded-full font-semibold text-[12px] shadow-sm transition-all active:scale-[0.98]" id="btn-stream-toggle" onclick="toggleStream()">
+<span class="material-symbols-outlined text-[15px]" data-icon="pause" id="icon-stream-toggle">pause</span>
+<span id="text-stream-toggle">Pause Stream</span>
+</button>
+<!-- Rate Slider -->
+<div class="flex items-center gap-2 px-3 py-1 bg-surface-container-low rounded-full border border-outline-variant text-[11px]">
+<span class="text-muted font-bold text-[10px] uppercase">Rate</span>
+<input class="w-16 h-1 bg-surface-container-high rounded-full accent-primary cursor-pointer" id="input-rate-slider" max="20" min="1" oninput="updateStreamRate(this.value)" type="range" value="4"/>
+<span class="font-mono text-on-surface font-semibold w-10 text-right text-[11px]" id="label-stream-rate">4 tx/s</span>
+</div>
+</div>
+<!-- Attack Injections -->
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="text-[10px] font-bold text-muted uppercase tracking-wider mr-1">Inject Attack:</span>
+<button class="px-2.5 py-1 bg-surface-container-low hover:bg-surface-container border border-outline-variant hover:border-primary text-on-surface text-[11px] font-semibold rounded-full transition-all active:scale-95" onclick="injectAttack('velocity')">
+          ⚡ Velocity Spike
+        </button>
+<button class="px-2.5 py-1 bg-surface-container-low hover:bg-surface-container border border-outline-variant hover:border-primary text-on-surface text-[11px] font-semibold rounded-full transition-all active:scale-95" onclick="injectAttack('amount')">
+          💎 Amount Outlier
+        </button>
+<button class="px-2.5 py-1 bg-surface-container-low hover:bg-surface-container border border-outline-variant hover:border-primary text-on-surface text-[11px] font-semibold rounded-full transition-all active:scale-95" onclick="injectAttack('travel')">
+          ✈️ Impossible Travel
+        </button>
+<button class="px-2.5 py-1 bg-surface-container-low hover:bg-surface-container border border-outline-variant hover:border-primary text-on-surface text-[11px] font-semibold rounded-full transition-all active:scale-95" onclick="injectAttack('mule')">
+          🕸️ Mule Ring
+        </button>
+</div>
+<!-- Auto-Freeze Rule Policy -->
+<div class="flex items-center gap-2 px-3 py-1 bg-surface-container-low rounded-full border border-outline-variant">
+<label class="flex items-center gap-1.5 cursor-pointer">
+<input checked="" class="w-3.5 h-3.5 rounded text-primary focus:ring-primary accent-primary cursor-pointer" id="toggle-autofreeze" onchange="toggleAutoFreeze(this.checked)" type="checkbox"/>
+<span class="text-[11px] font-bold text-on-surface">Auto-Freeze</span>
+</label>
+<span class="text-muted text-[11px]">≥</span>
+<div class="flex items-center gap-1">
+<input class="w-11 bg-white border border-outline-variant rounded px-1 py-0.5 text-[11px] font-mono text-primary font-bold text-center focus:outline-none focus:border-primary" id="input-freeze-threshold" max="1.00" min="0.50" onchange="updateFreezeThreshold(this.value)" step="0.05" type="number" value="0.80"/>
+<span class="text-[9px] font-mono text-muted uppercase">Score</span>
+</div>
+</div>
+</section>
+<!-- SPLIT MAIN WORKSPACE: LIVE STREAM (LEFT) vs ALERTS QUEUE (RIGHT) -->
+<div class="flex-1 flex overflow-hidden px-4 pb-4 gap-3.5 min-h-0">
+<!-- LEFT COLUMN: LIVE INGESTION STREAM -->
+<div class="flex-1 flex flex-col min-w-0 bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-sm overflow-hidden">
+<!-- Live Stream Controls & Search Toolbar -->
+<div class="flex items-center justify-between px-4 py-2.5 border-b border-outline-variant bg-surface-container-low/40 shrink-0 gap-3">
+<div class="flex items-center gap-2 min-w-0">
+<span class="material-symbols-outlined text-primary text-[17px] shrink-0" data-icon="dataset">dataset</span>
+<span class="font-bold text-[13px] text-on-surface truncate">Live Ingestion Stream</span>
+<span class="text-[10px] font-mono font-medium px-2 py-0.5 bg-surface-container rounded-full text-muted shrink-0" id="tx-stream-count-pill">BUFFER: 40 TX</span>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<!-- Search within stream -->
+<div class="relative w-44 md:w-56">
+<span class="material-symbols-outlined absolute left-2.5 top-2 text-muted text-[14px]" data-icon="search">search</span>
+<input class="w-full bg-white text-on-surface placeholder:text-muted border border-outline-variant rounded-full pl-8 pr-3 py-1 text-[11px] font-mono focus:outline-none focus:border-primary" id="global-search" oninput="handleGlobalSearch(this.value)" placeholder="Search Tx, Card, Geo..." type="text"/>
+</div>
+<!-- Channel Filter -->
+<select class="bg-white text-muted-dark text-[11px] font-medium border border-outline-variant rounded-full px-2.5 py-1 focus:outline-none focus:border-primary" id="channel-filter" onchange="filterLiveTransactions()">
+<option value="ALL">Channel: All</option>
+<option value="ONLINE">Online (CNP)</option>
+<option value="POS">In-Store / POS</option>
+</select>
+<button class="text-[11px] font-semibold text-muted hover:text-primary transition-colors underline ml-1" onclick="clearStreamDisplay()">Clear</button>
+</div>
+</div>
+<!-- Table Container -->
+<div class="flex-1 overflow-y-auto">
+<table class="w-full text-left border-collapse">
+<thead class="sticky top-0 bg-surface-container-low/95 backdrop-blur border-b border-outline-variant z-10">
+<tr class="text-[10px] font-bold text-muted font-mono h-8 uppercase tracking-wider">
+<th class="px-4 py-1.5 font-medium w-28">TIME</th>
+<th class="px-2 py-1.5 font-medium">TX ID</th>
+<th class="px-2 py-1.5 font-medium">MERCHANT</th>
+<th class="px-2 py-1.5 font-medium">CARD TOKEN</th>
+<th class="px-2 py-1.5 font-medium text-center w-16">GEO</th>
+<th class="px-2 py-1.5 font-medium text-center w-20">CHANNEL</th>
+<th class="px-2 py-1.5 font-medium w-28">RISK SCORE</th>
+<th class="px-4 py-1.5 font-medium text-right w-24">AMOUNT</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-subtle font-mono text-[12px]" id="live-stream-tbody">
+<!-- Dynamically populated rows with ₹ currency -->
+</tbody>
+</table>
+</div>
+</div>
+<!-- RIGHT COLUMN: FLAGGED ALERTS QUEUE -->
+<div class="w-96 xl:w-[420px] shrink-0 flex flex-col bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-sm overflow-hidden">
+<!-- Queue Header & Filter Pills -->
+<div class="p-3 border-b border-outline-variant shrink-0 bg-surface-container-low/40">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-rose-600 text-[17px]" data-icon="notification_important">notification_important</span>
+<span class="font-bold text-[13px] text-on-surface">Flagged Alerts Queue</span>
+<span class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-bold font-mono" id="alerts-count-badge">5 Active</span>
+</div>
+<span class="text-[10px] font-mono text-muted">1s REFRESH</span>
+</div>
+<!-- Severity Filter Pills -->
+<div class="flex items-center gap-1 mb-1.5 overflow-x-auto pb-0.5 text-[11px]">
+<span class="text-[9px] font-bold text-muted uppercase mr-1">SEV:</span>
+<button class="sev-filter-btn px-2.5 py-0.5 font-semibold rounded-full bg-primary text-white" id="sev-pill-ALL" onclick="setAlertSeverityFilter('ALL')">All</button>
+<button class="sev-filter-btn px-2.5 py-0.5 font-semibold rounded-full bg-surface-container-low text-muted-dark hover:bg-surface-container" id="sev-pill-CRITICAL" onclick="setAlertSeverityFilter('CRITICAL')">Critical</button>
+<button class="sev-filter-btn px-2.5 py-0.5 font-semibold rounded-full bg-surface-container-low text-muted-dark hover:bg-surface-container" id="sev-pill-HIGH" onclick="setAlertSeverityFilter('HIGH')">High</button>
+<button class="sev-filter-btn px-2.5 py-0.5 font-semibold rounded-full bg-surface-container-low text-muted-dark hover:bg-surface-container" id="sev-pill-MEDIUM" onclick="setAlertSeverityFilter('MEDIUM')">Med</button>
+</div>
+<!-- Status Filter Pills -->
+<div class="flex items-center gap-1 overflow-x-auto text-[11px]">
+<span class="text-[9px] font-bold text-muted uppercase mr-1">STATUS:</span>
+<button class="status-filter-btn px-2.5 py-0.5 font-semibold rounded-full bg-primary text-white" id="status-pill-ALL" onclick="setAlertStatusFilter('ALL')">All</button>
+<button class="status-filter-btn px-2.5 py-0.5 font-semibold rounded-full bg-surface-container-low text-muted-dark hover:bg-surface-container" id="status-pill-NEW" onclick="setAlertStatusFilter('NEW')">New</button>
+<button class="status-filter-btn px-2.5 py-0.5 font-semibold rounded-full bg-surface-container-low text-muted-dark hover:bg-surface-container" id="status-pill-INVESTIGATING" onclick="setAlertStatusFilter('INVESTIGATING')">In Review</button>
+<button class="status-filter-btn px-2.5 py-0.5 font-semibold rounded-full bg-surface-container-low text-muted-dark hover:bg-surface-container" id="status-pill-FROZEN" onclick="setAlertStatusFilter('FROZEN')">Frozen</button>
+<button class="status-filter-btn px-2.5 py-0.5 font-semibold rounded-full bg-surface-container-low text-muted-dark hover:bg-surface-container" id="status-pill-DISMISSED" onclick="setAlertStatusFilter('DISMISSED')">Dismissed</button>
+</div>
+</div>
+<!-- Alert Cards Scrollable List -->
+<div class="flex-1 overflow-y-auto p-3 space-y-2.5 bg-surface-container-lowest" id="alerts-card-list">
+<!-- Dynamic Alert Cards rendered via JS -->
+</div>
+</div>
+</div>
+</main>
+<!-- INVESTIGATION DETAIL DRAWER -->
+<aside class="w-0 overflow-hidden shrink-0 bg-surface-container-lowest border-l border-outline-variant flex flex-col transition-all duration-300 ease-in-out z-50 shadow-2xl" id="investigation-drawer">
+<div class="w-[420px] h-full flex flex-col">
+<!-- Drawer Header -->
+<div class="flex items-center justify-between px-5 py-3.5 bg-surface-container-low/70 border-b border-outline-variant shrink-0">
+<div class="flex items-center gap-2">
+<div class="w-7 h-7 rounded-full bg-primary-container text-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[15px]" data-icon="travel_explore">travel_explore</span>
+</div>
+<span class="font-bold text-[14px] text-on-surface">Case Dossier</span>
+<span class="px-2 py-0.5 text-[9px] font-mono font-bold rounded-full bg-rose-100 text-rose-700" id="drawer-status-pill">FROZEN</span>
+</div>
+<button class="p-1 text-muted hover:text-on-surface rounded-full hover:bg-surface-container-high transition-colors" onclick="closeInvestigationDrawer()" title="Close Drawer">
+<span class="material-symbols-outlined text-[18px]" data-icon="close">close</span>
+</button>
+</div>
+<!-- Drawer Content -->
+<div class="flex-1 overflow-y-auto p-4 space-y-3.5">
+<!-- Hero Summary Card -->
+<div class="bg-surface-container-low border border-outline-subtle p-3.5 rounded-2xl">
+<div class="flex justify-between items-start mb-2">
+<div>
+<span class="text-[9px] font-mono font-bold uppercase tracking-wider text-muted">TRANSACTION ID</span>
+<div class="text-[13px] font-mono font-bold text-on-surface" id="drawer-tx-id">TX-90284-8812</div>
+</div>
+<div class="text-right">
+<span class="text-[9px] font-mono font-bold uppercase tracking-wider text-muted">AUTHORIZED AMOUNT</span>
+<div class="text-lg font-mono font-extrabold text-on-surface" id="drawer-amount">₹4,850.00</div>
+</div>
+</div>
+<!-- Composite Risk Score Bar -->
+<div class="mt-2.5 pt-2.5 border-t border-outline-subtle">
+<div class="flex justify-between items-center text-[11px] font-mono mb-1">
+<span class="text-muted font-sans font-medium text-[11px]">Composite Risk Score</span>
+<span class="font-bold text-primary text-[13px]" id="drawer-score-val">0.94 / 1.00</span>
+</div>
+<div class="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full transition-all duration-500" id="drawer-score-bar" style="width: 94%;"></div>
+</div>
+</div>
+</div>
+<!-- Entity Metadata Grid -->
+<div class="bg-surface-container-low border border-outline-subtle p-3.5 rounded-2xl space-y-2">
+<div class="text-[10px] font-bold text-primary tracking-wider uppercase">Entity Metadata</div>
+<div class="grid grid-cols-2 gap-x-3 gap-y-2 text-[11px] font-mono">
+<div>
+<span class="text-muted text-[9px] block">CARD TOKEN</span>
+<span class="text-on-surface font-semibold" id="drawer-card-token">•••• 8192</span>
+</div>
+<div>
+<span class="text-muted text-[9px] block">USER ID</span>
+<span class="text-on-surface font-semibold" id="drawer-user-id">USR-0029-QQ</span>
+</div>
+<div>
+<span class="text-muted text-[9px] block">MERCHANT</span>
+<span class="text-on-surface font-semibold" id="drawer-merchant">Global Wire Trans</span>
+</div>
+<div>
+<span class="text-muted text-[9px] block">MCC / CATEGORY</span>
+<span class="text-on-surface" id="drawer-mcc">6051 (Quasi-Cash)</span>
+</div>
+<div>
+<span class="text-muted text-[9px] block">CHANNEL</span>
+<span class="text-on-surface" id="drawer-channel">ONLINE / CNP</span>
+</div>
+<div>
+<span class="text-muted text-[9px] block">IP &amp; GEOLOCATION</span>
+<span class="text-on-surface" id="drawer-ip-geo">194.26.29.112 (RU 🇷🇺)</span>
+</div>
+<div class="col-span-2">
+<span class="text-muted text-[9px] block">DEVICE FINGERPRINT</span>
+<span class="text-on-surface text-[10px]" id="drawer-device">DFP-linux-tor-exit</span>
+</div>
+<div class="col-span-2">
+<span class="text-muted text-[9px] block">TIMESTAMP</span>
+<span class="text-on-surface text-[10px]" id="drawer-timestamp">2025-02-24 14:01:42</span>
+</div>
+</div>
+</div>
+<!-- Detector Explainability Panel -->
+<div class="bg-surface-container-low border border-outline-subtle p-3.5 rounded-2xl">
+<div class="text-[10px] font-bold text-rose-700 tracking-wider uppercase mb-2">Rule Explainability Weights</div>
+<div class="space-y-1.5" id="drawer-detectors-list">
+<!-- Populated dynamically -->
+</div>
+</div>
+<!-- Card History Baseline -->
+<div class="bg-surface-container-low border border-outline-subtle p-3.5 rounded-2xl">
+<div class="flex justify-between items-center mb-2">
+<span class="text-[11px] font-bold text-on-surface">Card Recent Velocity Baseline</span>
+<span class="text-[9px] font-mono text-muted">Baseline: ₹850.00</span>
+</div>
+<div class="space-y-1.5 font-mono text-[10px]" id="drawer-card-history">
+<!-- Populated dynamically -->
+</div>
+</div>
+<!-- Analyst Case Notes -->
+<div class="bg-surface-container-low border border-outline-subtle p-3.5 rounded-2xl">
+<div class="text-[11px] font-bold text-on-surface mb-1.5">Investigator Case Notes</div>
+<textarea class="w-full bg-white border border-outline-variant rounded-xl p-2 text-[11px] font-sans text-on-surface focus:outline-none focus:border-primary" id="drawer-case-notes" placeholder="Add observations, syndicate tags, or cardholder contact notes..." rows="3"></textarea>
+<div class="flex justify-end mt-1.5">
+<button class="px-3 py-1 bg-surface-container hover:bg-surface-container-high border border-outline-variant text-[11px] font-semibold text-on-surface rounded-full transition-all active:scale-95" onclick="saveCaseNote()">
+              Save Note
+            </button>
+</div>
+</div>
+<!-- Live Audit Trail -->
+<div class="bg-surface-container-low border border-outline-subtle p-3.5 rounded-2xl">
+<div class="text-[10px] font-bold text-muted uppercase tracking-wider mb-2">Enforcement Audit Trail</div>
+<div class="space-y-1 text-[10px] font-mono text-muted-dark" id="drawer-audit-trail">
+<!-- Logs dynamic -->
+</div>
+</div>
+</div>
+<!-- Drawer Action Bar -->
+<div class="p-3 bg-surface-container-low border-t border-outline-variant shrink-0 flex items-center justify-between gap-2">
+<button class="flex-1 py-1.5 bg-white hover:bg-surface-container border border-outline-variant text-on-surface text-[11px] font-semibold rounded-full shadow-sm transition-all active:scale-[0.98]" onclick="handleDrawerAction('INVESTIGATING')">
+          Review
+        </button>
+<button class="flex-1 py-1.5 bg-primary hover:bg-primary-hover text-white text-[11px] font-semibold rounded-full shadow-sm transition-all active:scale-[0.98]" onclick="handleDrawerAction('FROZEN')">
+          Freeze Card
+        </button>
+<button class="flex-1 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-semibold rounded-full shadow-sm transition-all active:scale-[0.98]" onclick="handleDrawerAction('DISMISSED')">
+          Allow
+        </button>
+</div>
+</div>
+</aside>
+</div>
+<!-- TOAST NOTIFICATION CONTAINER -->
+<div class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none" id="toast-container"></div>
+<!-- JAVASCRIPT: STREAM ENGINE & INTERACTIONS -->
+<script>
+  // State Variables
+  let isStreamRunning = true;
+  let streamRateTxSec = 4;
+  let streamIntervalTimer = null;
+  let isNetworkHiccup = false;
+  let autoFreezeThreshold = 0.80;
+  let isAutoFreezeEnabled = true;
+
+  // Counters
+  let totalEventsProcessed = 18441;
+  let totalFrozenCount = 18;
+  let preventedLossRupees = 90259;
+  let valueAtRiskRupees = 144519;
+
+  // Filters
+  let currentSevFilter = 'ALL';
+  let currentStatusFilter = 'ALL';
+  let globalSearchTerm = '';
+
+  let activeAlertCase = null;
+
+  const MERCHANTS = [
+    { name: "Nordic Hotel Suites", cat: "7011 (Hotels)", mcc: "7011" },
+    { name: "Urban Groceries", cat: "5411 (Grocery)", mcc: "5411" },
+    { name: "LuxuryWatch Co.", cat: "5944 (Jewelry)", mcc: "5944" },
+    { name: "Stripe Subscriptions", cat: "7372 (SaaS)", mcc: "7372" },
+    { name: "Apex Electronics", cat: "5732 (Electronics)", mcc: "5732" },
+    { name: "Global Wire Trans", cat: "6051 (Quasi-Cash)", mcc: "6051" },
+    { name: "Skyline Airways", cat: "4511 (Airlines)", mcc: "4511" },
+    { name: "Cafe Barista", cat: "5814 (Fast Food)", mcc: "5814" }
+  ];
+
+  const COUNTRIES = [
+    { code: "BR", flag: "🇧🇷" },
+    { code: "US", flag: "🇺🇸" },
+    { code: "DE", flag: "🇩🇪" },
+    { code: "SG", flag: "🇸🇬" },
+    { code: "RU", flag: "🇷🇺" },
+    { code: "GB", flag: "🇬🇧" },
+    { code: "NG", flag: "🇳🇬" },
+    { code: "IN", flag: "🇮🇳" }
+  ];
+
+  // Rupee format helper
+  function formatRupees(amount) {
+    const num = Math.round(amount);
+    return '₹' + num.toLocaleString('en-IN');
+  }
+
+  let alertsQueue = [
+    {
+      id: "TX-7753-6028",
+      txId: "TX-7753-6028",
+      timestamp: new Date().toISOString(),
+      merchant: "Nordic Hotel Suites",
+      mcc: "7011 (Hotels)",
+      cardToken: "•••• 9310",
+      channel: "ONLINE",
+      country: "DE",
+      countryFlag: "🇩🇪",
+      ip: "194.12.89.21",
+      device: "DFP-win-chrome-anon",
+      userId: "USR-7731-BC",
+      amount: 1669.00,
+      riskScore: 0.87,
+      severity: "HIGH",
+      status: "FROZEN",
+      detectors: [
+        { name: "Card baseline within expected variance", weight: "+0.05" }
+      ],
+      auditHistory: [
+        "Policy triggered Auto-Freeze at score 0.87"
+      ],
+      notes: "Foreign booking flagged under velocity rule."
+    },
+    {
+      id: "TX-8921-9921",
+      txId: "TX-8921-9921",
+      timestamp: new Date(Date.now() - 34000).toISOString(),
+      merchant: "Global Wire Trans",
+      mcc: "6051 (Quasi-Cash)",
+      cardToken: "•••• 8192",
+      channel: "ONLINE",
+      country: "RU",
+      countryFlag: "🇷🇺",
+      ip: "194.26.29.112",
+      device: "DFP-linux-tor-exit",
+      userId: "USR-0029-QQ",
+      amount: 8400.00,
+      riskScore: 0.94,
+      severity: "CRITICAL",
+      status: "FROZEN",
+      detectors: [
+        { name: "Geo velocity mismatch (NYC -> Moscow in 14m)", weight: "+0.45" },
+        { name: "Known Tor Exit Node IP address", weight: "+0.32" }
+      ],
+      auditHistory: [
+        "System policy triggered Auto-Freeze at score 0.94",
+        "SMS verification challenge failed"
+      ],
+      notes: "High confidence credential stuffing syndicate signature."
+    },
+    {
+      id: "TX-7734-1109",
+      txId: "TX-7734-1109",
+      timestamp: new Date(Date.now() - 60000).toISOString(),
+      merchant: "Skyline Airways",
+      mcc: "4511 (Airlines)",
+      cardToken: "•••• 4892",
+      channel: "ONLINE",
+      country: "SG",
+      countryFlag: "🇸🇬",
+      ip: "103.252.11.8",
+      device: "DFP-mac-safari-headless",
+      userId: "USR-9481-NX",
+      amount: 2450.00,
+      riskScore: 0.88,
+      severity: "HIGH",
+      status: "INVESTIGATING",
+      detectors: [
+        { name: "Impossible travel: US card used in Singapore", weight: "+0.42" },
+        { name: "Amount 6.2x card 30-day baseline", weight: "+0.31" }
+      ],
+      auditHistory: [
+        "Assigned to SOC Investigator for manual review"
+      ],
+      notes: "Cardholder travel history indicates no overseas filings."
+    },
+    {
+      id: "TX-4401-6523",
+      txId: "TX-4401-6523",
+      timestamp: new Date(Date.now() - 180000).toISOString(),
+      merchant: "Apex Electronics",
+      mcc: "5732 (Electronics)",
+      cardToken: "•••• 1029",
+      channel: "ONLINE",
+      country: "US",
+      countryFlag: "🇺🇸",
+      ip: "72.229.28.18",
+      device: "DFP-win-chrome-anon",
+      userId: "USR-4381-ZK",
+      amount: 1299.00,
+      riskScore: 0.78,
+      severity: "HIGH",
+      status: "NEW",
+      detectors: [
+        { name: "Velocity: 5 orders within 60s across merchants", weight: "+0.48" }
+      ],
+      auditHistory: [
+        "System flagged alert into triage queue"
+      ],
+      notes: ""
+    },
+    {
+      id: "TX-3199-8801",
+      txId: "TX-3199-8801",
+      timestamp: new Date(Date.now() - 310000).toISOString(),
+      merchant: "LuxuryWatch Co.",
+      mcc: "5944 (Jewelry)",
+      cardToken: "•••• 2331",
+      channel: "POS",
+      country: "US",
+      countryFlag: "🇺🇸",
+      ip: "91.198.174.192",
+      device: "POS-TERMINAL-US-04",
+      userId: "USR-1994-AB",
+      amount: 4500.00,
+      riskScore: 0.82,
+      severity: "HIGH",
+      status: "NEW",
+      detectors: [
+        { name: "High-risk MCC outlier above threshold", weight: "+0.38" }
+      ],
+      auditHistory: [
+        "System generated telemetry alert"
+      ],
+      notes: ""
+    }
+  ];
+
+  let liveTxBuffer = [];
+
+  function formatTime(isoStr) {
+    const d = new Date(isoStr);
+    return d.toTimeString().split(' ')[0] + '.' + String(d.getMilliseconds()).padStart(3, '0');
+  }
+
+  function timeAgo(isoStr) {
+    const diffSec = Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000);
+    if (diffSec < 5) return 'just now';
+    if (diffSec < 60) return `${diffSec}s ago`;
+    const mins = Math.floor(diffSec / 60);
+    return `${mins}m ago`;
+  }
+
+  function getRandomItem(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+
+  function getRandomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  function generateTransaction(override = {}) {
+    const m = getRandomItem(MERCHANTS);
+    const c = getRandomItem(COUNTRIES);
+    const isOnline = Math.random() > 0.35;
+    const cardLast4 = getRandomInt(1000, 9999);
+    
+    let baseScore = Math.random() * 0.40;
+    let amount = parseFloat((Math.random() * 1800 + 150).toFixed(2));
+
+    if (Math.random() < 0.12) {
+      baseScore = Math.random() * 0.40 + 0.55;
+      amount = parseFloat((Math.random() * 8500 + 1200).toFixed(2));
+    }
+
+    const tx = {
+      id: `TX-${getRandomInt(1000, 9999)}-${getRandomInt(1000, 9999)}`,
+      txId: `TX-${getRandomInt(1000, 9999)}-${getRandomInt(1000, 9999)}`,
+      timestamp: new Date().toISOString(),
+      merchant: m.name,
+      mcc: m.cat,
+      cardToken: `•••• ${cardLast4}`,
+      channel: isOnline ? "ONLINE" : "POS",
+      country: c.code,
+      countryFlag: c.flag,
+      ip: `${getRandomInt(10, 220)}.${getRandomInt(1, 250)}.${getRandomInt(1, 250)}.${getRandomInt(1, 250)}`,
+      device: isOnline ? `DFP-${getRandomInt(100, 999)}-sec` : `POS-TERM-${c.code}-${getRandomInt(10, 99)}`,
+      userId: `USR-${getRandomInt(1000, 9999)}-${String.fromCharCode(65 + getRandomInt(0, 25))}${String.fromCharCode(65 + getRandomInt(0, 25))}`,
+      amount: amount,
+      currency: "INR",
+      riskScore: parseFloat(baseScore.toFixed(2)),
+      severity: "LOW",
+      status: "NEW",
+      detectors: [
+        { name: "Card baseline within expected variance", weight: "+0.05" }
+      ],
+      auditHistory: [
+        `${new Date().toTimeString().split(' ')[0]} Ingested into RiskPulse engine`
+      ],
+      notes: "",
+      ...override
+    };
+
+    if (tx.riskScore >= 0.90) {
+      tx.severity = "CRITICAL";
+    } else if (tx.riskScore >= 0.75) {
+      tx.severity = "HIGH";
+    } else if (tx.riskScore >= 0.50) {
+      tx.severity = "MEDIUM";
+    } else {
+      tx.severity = "LOW";
+    }
+
+    if (isAutoFreezeEnabled && tx.riskScore >= autoFreezeThreshold) {
+      tx.status = "FROZEN";
+      tx.auditHistory.push(`${new Date().toTimeString().split(' ')[0]} Auto-Freeze Policy triggered [Threshold: ${autoFreezeThreshold.toFixed(2)}]`);
+      totalFrozenCount++;
+      preventedLossRupees += tx.amount;
+      updatePersistentCounters();
+    }
+
+    return tx;
+  }
+
+  function ingestTransaction(tx, isAttack = false) {
+    totalEventsProcessed++;
+    const currentThroughput = Math.floor(streamRateTxSec * 60 * (0.95 + Math.random() * 0.1));
+    document.getElementById('kpi-throughput').textContent = currentThroughput.toLocaleString();
+
+    liveTxBuffer.unshift(tx);
+    if (liveTxBuffer.length > 50) liveTxBuffer.pop();
+
+    if (tx.riskScore >= 0.65) {
+      valueAtRiskRupees += tx.amount;
+      alertsQueue.unshift(tx);
+      renderAlertsList();
+      updatePersistentCounters();
+    }
+
+    prependLiveTableRow(tx, isAttack);
+    updatePersistentCounters();
+  }
+
+  function prependLiveTableRow(tx, isFlash = false) {
+    const tbody = document.getElementById('live-stream-tbody');
+    if (!tbody) return;
+
+    const channelSelect = document.getElementById('channel-filter').value;
+    if (channelSelect !== 'ALL' && tx.channel !== channelSelect) return;
+
+    if (globalSearchTerm) {
+      const str = `${tx.txId} ${tx.merchant} ${tx.cardToken} ${tx.country}`.toLowerCase();
+      if (!str.includes(globalSearchTerm.toLowerCase())) return;
+    }
+
+    const row = document.createElement('tr');
+    row.className = `border-b border-outline-subtle hover:bg-surface-container-low transition-colors cursor-pointer ${isFlash ? 'flash-new-tx' : ''}`;
+    row.onclick = () => openInvestigationFromTx(tx);
+
+    let scoreClass = 'text-emerald-700 bg-emerald-50 border-emerald-200';
+    if (tx.riskScore >= 0.90) scoreClass = 'text-rose-700 bg-rose-50 border-rose-200 font-bold';
+    else if (tx.riskScore >= 0.75) scoreClass = 'text-amber-800 bg-amber-50 border-amber-200 font-bold';
+    else if (tx.riskScore >= 0.50) scoreClass = 'text-amber-700 bg-amber-50/50 border-amber-200';
+
+    const channelBadge = tx.channel === 'ONLINE'
+      ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-sans font-semibold bg-surface-container text-muted-dark border border-outline-subtle">ONLINE</span>`
+      : `<span class="px-2 py-0.5 rounded-full text-[10px] font-sans font-semibold bg-surface-container-low text-muted border border-outline-subtle">POS</span>`;
+
+    row.innerHTML = `
+      <td class="px-4 py-2 text-muted text-[11px] font-mono">${formatTime(tx.timestamp)}</td>
+      <td class="px-2 py-2 font-bold text-on-surface text-[12px] font-mono">${tx.txId}</td>
+      <td class="px-2 py-2">
+        <div class="truncate max-w-[160px] text-on-surface font-semibold text-[12px] font-sans">${tx.merchant}</div>
+        <div class="text-[10px] text-muted truncate font-sans">${tx.mcc}</div>
+      </td>
+      <td class="px-2 py-2 text-muted-dark font-mono text-[11px]">${tx.cardToken}</td>
+      <td class="px-2 py-2 text-center text-[12px]">${tx.countryFlag} <span class="text-[10px] text-muted font-mono">${tx.country}</span></td>
+      <td class="px-2 py-2 text-center">${channelBadge}</td>
+      <td class="px-2 py-2">
+        <div class="flex items-center gap-1.5">
+          <span class="px-2 py-0.5 rounded-full text-[11px] font-mono border ${scoreClass}">${tx.riskScore.toFixed(2)}</span>
+          <div class="flex-1 bg-surface-container-high h-1.5 rounded-full overflow-hidden hidden sm:block">
+            <div class="h-full rounded-full ${tx.riskScore >= 0.75 ? 'bg-primary' : 'bg-emerald-600'}" style="width: ${Math.round(tx.riskScore * 100)}%;"></div>
+          </div>
+        </div>
+      </td>
+      <td class="px-4 py-2 text-right font-mono font-bold ${tx.amount > 3000 ? 'text-primary' : 'text-on-surface'}">
+        ${formatRupees(tx.amount)}
+      </td>
+    `;
+
+    tbody.insertBefore(row, tbody.firstChild);
+
+    if (tbody.children.length > 40) {
+      tbody.removeChild(tbody.lastChild);
+    }
+  }
+
+  function renderAlertsList() {
+    const container = document.getElementById('alerts-card-list');
+    if (!container) return;
+
+    const filtered = alertsQueue.filter(alert => {
+      if (currentSevFilter !== 'ALL' && alert.severity !== currentSevFilter) return false;
+      if (currentStatusFilter !== 'ALL' && alert.status !== currentStatusFilter) return false;
+      if (globalSearchTerm) {
+        const q = globalSearchTerm.toLowerCase();
+        const matchStr = `${alert.txId} ${alert.merchant} ${alert.cardToken} ${alert.country} ${alert.status}`.toLowerCase();
+        if (!matchStr.includes(q)) return false;
+      }
+      return true;
+    });
+
+    document.getElementById('alerts-count-badge').textContent = `${filtered.length} Active`;
+    document.getElementById('rail-alert-badge').textContent = alertsQueue.filter(a => a.status === 'NEW' || a.status === 'INVESTIGATING').length;
+
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div class="p-8 text-center text-muted">
+          <span class="material-symbols-outlined text-[32px] mb-2 text-outline" data-icon="verified_user">verified_user</span>
+          <div class="text-[12px] font-semibold">No alerts match current filters.</div>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = '';
+
+    filtered.forEach(alert => {
+      const card = document.createElement('div');
+      
+      let borderClass = "border-outline-variant";
+      if (alert.severity === "CRITICAL") borderClass = "border-rose-200 hover:border-rose-300";
+      else if (alert.severity === "HIGH") borderClass = "border-amber-200 hover:border-amber-300";
+
+      let statusBadge = "bg-surface-container text-muted-dark";
+      if (alert.status === "FROZEN") statusBadge = "bg-rose-100 text-rose-800 font-bold";
+      else if (alert.status === "INVESTIGATING") statusBadge = "bg-primary-container text-primary font-bold";
+      else if (alert.status === "DISMISSED") statusBadge = "bg-surface-container text-muted line-through";
+
+      card.className = `bg-surface-container-lowest border ${borderClass} p-3 rounded-2xl cursor-pointer hover:shadow-md transition-all active:scale-[0.99] space-y-2`;
+      card.onclick = () => openInvestigationDrawer(alert);
+
+      const detectorTags = alert.detectors.slice(0, 2).map(d => `
+        <div class="flex items-center gap-1.5 text-[10px] text-muted-dark bg-surface-container-low px-2 py-1 rounded-lg border border-outline-subtle">
+          <span class="text-rose-700 font-mono font-bold">${d.weight}</span>
+          <span class="truncate">${d.name}</span>
+        </div>
+      `).join('');
+
+      card.innerHTML = `
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-1.5">
+            <span class="px-2 py-0.5 rounded-full text-[9px] font-bold font-mono ${alert.severity === 'CRITICAL' ? 'bg-rose-600 text-white' : alert.severity === 'HIGH' ? 'bg-amber-600 text-white' : 'bg-surface-container-high text-on-surface'}">
+              ${alert.severity}
+            </span>
+            <span class="px-2 py-0.5 rounded-full text-[9px] font-mono font-semibold ${statusBadge}">
+              ${alert.status}
+            </span>
+            <span class="text-[10px] text-muted">${timeAgo(alert.timestamp)}</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <span class="text-[9px] font-mono text-muted uppercase">Score:</span>
+            <span class="text-[12px] font-mono font-extrabold ${alert.riskScore >= 0.85 ? 'text-rose-700' : 'text-amber-700'}">${alert.riskScore.toFixed(2)}</span>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-0.5">
+          <div>
+            <span class="text-[13px] font-bold text-on-surface leading-snug">${alert.merchant}</span>
+            <div class="text-[10px] font-mono text-muted mt-0.5">${alert.cardToken} · ${alert.countryFlag} ${alert.country} · ${alert.channel}</div>
+          </div>
+          <div class="text-right">
+            <span class="text-[14px] font-mono font-extrabold ${alert.amount > 3000 ? 'text-primary' : 'text-on-surface'}">
+              ${formatRupees(alert.amount)}
+            </span>
+          </div>
+        </div>
+
+        <div class="space-y-1 pt-0.5">
+          ${detectorTags}
+        </div>
+      `;
+
+      container.appendChild(card);
+    });
+  }
+
+  function openInvestigationDrawer(alert) {
+    activeAlertCase = alert;
+    const drawer = document.getElementById('investigation-drawer');
+    drawer.style.width = '420px';
+
+    document.getElementById('drawer-tx-id').textContent = alert.txId;
+    document.getElementById('drawer-amount').textContent = `${formatRupees(alert.amount)}`;
+    document.getElementById('drawer-score-val').textContent = `${alert.riskScore.toFixed(2)} / 1.00`;
+    document.getElementById('drawer-score-bar').style.width = `${Math.min(100, Math.round(alert.riskScore * 100))}%`;
+
+    const statusPill = document.getElementById('drawer-status-pill');
+    statusPill.textContent = alert.status;
+    if (alert.status === 'FROZEN') {
+      statusPill.className = 'px-2 py-0.5 text-[9px] font-mono font-bold rounded-full bg-rose-100 text-rose-700';
+    } else if (alert.status === 'INVESTIGATING') {
+      statusPill.className = 'px-2 py-0.5 text-[9px] font-mono font-bold rounded-full bg-primary-container text-primary';
+    } else {
+      statusPill.className = 'px-2 py-0.5 text-[9px] font-mono font-bold rounded-full bg-surface-container text-muted-dark';
+    }
+
+    document.getElementById('drawer-card-token').textContent = `${alert.cardToken} (Cardholder Verified)`;
+    document.getElementById('drawer-user-id').textContent = alert.userId || 'USR-4412-GEN';
+    document.getElementById('drawer-merchant').textContent = alert.merchant;
+    document.getElementById('drawer-mcc').textContent = alert.mcc;
+    document.getElementById('drawer-channel').textContent = `${alert.channel} / CNP Tokenized`;
+    document.getElementById('drawer-ip-geo').textContent = `${alert.ip} (${alert.country} ${alert.countryFlag})`;
+    document.getElementById('drawer-device').textContent = alert.device || 'DFP-standard-client';
+    document.getElementById('drawer-timestamp').textContent = alert.timestamp;
+
+    document.getElementById('drawer-case-notes').value = alert.notes || '';
+
+    const detectorsContainer = document.getElementById('drawer-detectors-list');
+    detectorsContainer.innerHTML = '';
+    alert.detectors.forEach(d => {
+      const item = document.createElement('div');
+      item.className = 'flex items-start justify-between bg-surface-container-lowest p-2 rounded-xl border border-outline-subtle text-[11px] font-mono';
+      item.innerHTML = `
+        <div class="flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-rose-600 text-[13px]" data-icon="policy">policy</span>
+          <span class="text-on-surface font-sans">${d.name}</span>
+        </div>
+        <span class="text-rose-700 font-bold shrink-0 ml-2 font-mono">${d.weight}</span>
+      `;
+      detectorsContainer.appendChild(item);
+    });
+
+    const historyContainer = document.getElementById('drawer-card-history');
+    historyContainer.innerHTML = `
+      <div class="flex justify-between items-center text-muted-dark py-1 border-b border-outline-subtle">
+        <span>T-3h · Urban Groceries (POS)</span>
+        <span class="text-emerald-700 font-bold">₹420 · OK (0.04)</span>
+      </div>
+      <div class="flex justify-between items-center text-muted-dark py-1 border-b border-outline-subtle">
+        <span>T-18h · Cafe Barista (POS)</span>
+        <span class="text-emerald-700 font-bold">₹185 · OK (0.02)</span>
+      </div>
+      <div class="flex justify-between items-center text-muted-dark py-1 border-b border-outline-subtle">
+        <span>T-2d · Stripe Subscriptions (ONLINE)</span>
+        <span class="text-emerald-700 font-bold">₹2,400 · OK (0.08)</span>
+      </div>
+      <div class="flex justify-between items-center py-1 text-primary font-bold">
+        <span>CURRENT · ${alert.merchant}</span>
+        <span>${formatRupees(alert.amount)} · ALERT (${alert.riskScore.toFixed(2)})</span>
+      </div>
+    `;
+
+    renderDrawerAuditTrail();
+  }
+
+  function openInvestigationFromTx(tx) {
+    let foundAlert = alertsQueue.find(a => a.txId === tx.txId);
+    if (!foundAlert) {
+      foundAlert = {
+        ...tx,
+        detectors: [
+          { name: "Live stream manual inspector selection", weight: "+0.10" }
+        ],
+        auditHistory: [
+          `${new Date().toTimeString().split(' ')[0]} Analyst opened telemetry case.`
+        ],
+        notes: ""
+      };
+    }
+    openInvestigationDrawer(foundAlert);
+  }
+
+  function closeInvestigationDrawer() {
+    const drawer = document.getElementById('investigation-drawer');
+    drawer.style.width = '0px';
+    activeAlertCase = null;
+  }
+
+  function renderDrawerAuditTrail() {
+    const container = document.getElementById('drawer-audit-trail');
+    if (!container || !activeAlertCase) return;
+    container.innerHTML = '';
+    activeAlertCase.auditHistory.forEach(log => {
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-1.5 py-1 border-b border-outline-subtle';
+      row.innerHTML = `
+        <span class="material-symbols-outlined text-muted text-[12px]" data-icon="history">history</span>
+        <span>${log}</span>
+      `;
+      container.appendChild(row);
+    });
+  }
+
+  function handleDrawerAction(actionType) {
+    if (!activeAlertCase) return;
+
+    const timeStr = new Date().toTimeString().split(' ')[0];
+    activeAlertCase.status = actionType;
+
+    if (actionType === 'FROZEN') {
+      activeAlertCase.auditHistory.unshift(`${timeStr} Card frozen by investigator.`);
+      totalFrozenCount++;
+      preventedLossRupees += activeAlertCase.amount;
+      showToast(`🛑 Card ${activeAlertCase.cardToken} Frozen. Merchant notified.`, 'error');
+    } else if (actionType === 'INVESTIGATING') {
+      activeAlertCase.auditHistory.unshift(`${timeStr} Status shifted to Investigating.`);
+      showToast(`🔍 Case ${activeAlertCase.txId} escalated for review.`, 'info');
+    } else if (actionType === 'DISMISSED') {
+      activeAlertCase.auditHistory.unshift(`${timeStr} Cleared as safe / False Positive.`);
+      showToast(`✅ Alert ${activeAlertCase.txId} dismissed.`, 'success');
+    }
+
+    openInvestigationDrawer(activeAlertCase);
+    renderAlertsList();
+    updatePersistentCounters();
+  }
+
+  function saveCaseNote() {
+    if (!activeAlertCase) return;
+    const notes = document.getElementById('drawer-case-notes').value;
+    activeAlertCase.notes = notes;
+    const timeStr = new Date().toTimeString().split(' ')[0];
+    activeAlertCase.auditHistory.unshift(`${timeStr} Case notes updated by investigator.`);
+    renderDrawerAuditTrail();
+    showToast('📝 Investigator case notes saved.', 'info');
+  }
+
+  function injectAttack(type) {
+    let scenarioDesc = '';
+    const batch = [];
+
+    if (type === 'velocity') {
+      scenarioDesc = '⚡ Velocity Attack: 6 rapid bursts from single token';
+      const card = `•••• ${getRandomInt(1000, 9999)}`;
+      for (let i = 0; i < 6; i++) {
+        batch.push(generateTransaction({
+          cardToken: card,
+          merchant: "Apex Electronics",
+          amount: parseFloat((Math.random() * 4000 + 4500).toFixed(2)),
+          riskScore: parseFloat((0.82 + i * 0.03).toFixed(2)),
+          channel: "ONLINE",
+          detectors: [
+            { name: `Velocity spike: ${i + 1} transactions within 12s`, weight: "+0.52" },
+            { name: "Checkout API token cycling detected", weight: "+0.35" }
+          ]
+        }));
+      }
+    } else if (type === 'amount') {
+      scenarioDesc = '💎 Outlier: High-value ₹85,000 luxury charge';
+      batch.push(generateTransaction({
+        merchant: "LuxuryWatch Co.",
+        amount: 85000.00,
+        riskScore: 0.97,
+        channel: "ONLINE",
+        detectors: [
+          { name: "Amount outlier: 42x above card 90-day baseline", weight: "+0.65" },
+          { name: "First-time purchase at high-risk MCC", weight: "+0.28" }
+        ]
+      }));
+    } else if (type === 'travel') {
+      scenarioDesc = '✈️ Impossible Travel: London UK 🇬🇧 → Singapore SG 🇸🇬 in 18m';
+      const card = `•••• ${getRandomInt(1000, 9999)}`;
+      batch.push(generateTransaction({
+        cardToken: card,
+        country: "GB",
+        countryFlag: "🇬🇧",
+        merchant: "Harrods London",
+        amount: 3400.00,
+        riskScore: 0.45
+      }));
+      batch.push(generateTransaction({
+        cardToken: card,
+        country: "SG",
+        countryFlag: "🇸🇬",
+        merchant: "Marina Bay Luxury",
+        amount: 42000.00,
+        riskScore: 0.96,
+        detectors: [
+          { name: "Impossible velocity: 6,700 miles in 18 minutes", weight: "+0.70" },
+          { name: "Carrier cellular tower discrepancy", weight: "+0.22" }
+        ]
+      }));
+    } else if (type === 'mule') {
+      scenarioDesc = '🕸️ Mule Ring: Rapid micro-deposits detected';
+      for (let i = 0; i < 4; i++) {
+        batch.push(generateTransaction({
+          merchant: "Global Wire Trans",
+          amount: parseFloat((Math.random() * 900 + 8000).toFixed(2)),
+          riskScore: 0.89,
+          channel: "ONLINE",
+          detectors: [
+            { name: "Mule ring signature: Funnel accounts rapid dispersion", weight: "+0.58" },
+            { name: "Device matches fraud syndicate #4812", weight: "+0.31" }
+          ]
+        }));
+      }
+    }
+
+    batch.forEach((t, idx) => {
+      setTimeout(() => {
+        ingestTransaction(t, true);
+      }, idx * 120);
+    });
+
+    showToast(scenarioDesc, 'alert');
+  }
+
+  function toggleStream() {
+    isStreamRunning = !isStreamRunning;
+    const btn = document.getElementById('btn-stream-toggle');
+    const text = document.getElementById('text-stream-toggle');
+    const icon = document.getElementById('icon-stream-toggle');
+
+    if (isStreamRunning) {
+      startStreamLoop();
+      btn.className = "flex items-center gap-1.5 px-3.5 py-1.5 bg-primary hover:bg-primary-hover text-white rounded-full font-semibold text-[12px] shadow-sm transition-all active:scale-[0.98]";
+      text.textContent = "Pause Stream";
+      icon.textContent = "pause";
+      showToast("▶️ Live transaction ingestion active.", "info");
+    } else {
+      clearInterval(streamIntervalTimer);
+      btn.className = "flex items-center gap-1.5 px-3.5 py-1.5 bg-surface-container-high hover:bg-surface-container text-on-surface rounded-full font-semibold text-[12px] shadow-sm transition-all active:scale-[0.98]";
+      text.textContent = "Resume Stream";
+      icon.textContent = "play_arrow";
+      showToast("⏸️ Ingestion stream paused.", "info");
+    }
+  }
+
+  function updateStreamRate(val) {
+    streamRateTxSec = parseInt(val, 10);
+    document.getElementById('label-stream-rate').textContent = `${streamRateTxSec} tx/s`;
+    if (isStreamRunning) {
+      startStreamLoop();
+    }
+  }
+
+  function startStreamLoop() {
+    clearInterval(streamIntervalTimer);
+    const delayMs = Math.max(80, Math.floor(1000 / streamRateTxSec));
+    streamIntervalTimer = setInterval(() => {
+      if (!isStreamRunning) return;
+      const tx = generateTransaction();
+      ingestTransaction(tx);
+    }, delayMs);
+  }
+
+  function toggleAutoFreeze(checked) {
+    isAutoFreezeEnabled = checked;
+    showToast(`Policy: Auto-Freeze is ${checked ? 'ACTIVE' : 'DISABLED'}.`, checked ? 'info' : 'alert');
+  }
+
+  function updateFreezeThreshold(val) {
+    autoFreezeThreshold = parseFloat(val);
+    showToast(`Policy threshold set to ${autoFreezeThreshold.toFixed(2)}.`, 'info');
+  }
+
+  function triggerEmergencyFreeze() {
+    const openCriticals = alertsQueue.filter(a => a.riskScore >= 0.80 && a.status !== 'FROZEN');
+    openCriticals.forEach(c => {
+      c.status = 'FROZEN';
+      c.auditHistory.unshift(`${new Date().toTimeString().split(' ')[0]} Emergency freeze bulk trigger.`);
+      totalFrozenCount++;
+      preventedLossRupees += c.amount;
+    });
+    renderAlertsList();
+    updatePersistentCounters();
+    showToast(`🚨 Emergency Freeze: Blocked ${openCriticals.length} high-risk cards immediately!`, 'error');
+  }
+
+  function setAlertSeverityFilter(sev) {
+    currentSevFilter = sev;
+    document.querySelectorAll('.sev-filter-btn').forEach(btn => {
+      btn.className = 'sev-filter-btn px-2.5 py-0.5 font-semibold rounded-full bg-surface-container-low text-muted-dark hover:bg-surface-container';
+    });
+    const activeBtn = document.getElementById(`sev-pill-${sev}`);
+    if (activeBtn) {
+      activeBtn.className = 'sev-filter-btn px-2.5 py-0.5 font-semibold rounded-full bg-primary text-white';
+    }
+    renderAlertsList();
+  }
+
+  function setAlertStatusFilter(status) {
+    currentStatusFilter = status;
+    document.querySelectorAll('.status-filter-btn').forEach(btn => {
+      btn.className = 'status-filter-btn px-2.5 py-0.5 font-semibold rounded-full bg-surface-container-low text-muted-dark hover:bg-surface-container';
+    });
+    const activeBtn = document.getElementById(`status-pill-${status}`);
+    if (activeBtn) {
+      activeBtn.className = 'status-filter-btn px-2.5 py-0.5 font-semibold rounded-full bg-primary text-white';
+    }
+    renderAlertsList();
+  }
+
+  function filterLiveTransactions() {
+    const tbody = document.getElementById('live-stream-tbody');
+    tbody.innerHTML = '';
+    liveTxBuffer.forEach(tx => prependLiveTableRow(tx));
+  }
+
+  function handleGlobalSearch(term) {
+    globalSearchTerm = term;
+    filterLiveTransactions();
+    renderAlertsList();
+  }
+
+  function clearStreamDisplay() {
+    liveTxBuffer = [];
+    document.getElementById('live-stream-tbody').innerHTML = '';
+    showToast('Live table buffer display cleared.', 'info');
+  }
+
+  function toggleNetworkHiccup() {
+    isNetworkHiccup = !isNetworkHiccup;
+    const banner = document.getElementById('hiccup-banner');
+    const pingDot = document.getElementById('stream-ping-dot');
+    const statusDot = document.getElementById('stream-status-dot');
+    const statusText = document.getElementById('stream-status-text');
+    const latencyText = document.getElementById('stream-latency');
+
+    if (isNetworkHiccup) {
+      banner.classList.remove('hidden');
+      pingDot.classList.remove('bg-emerald-accent');
+      pingDot.classList.add('bg-amber-500');
+      statusDot.className = 'relative inline-flex rounded-full h-2 w-2 bg-amber-500';
+      statusText.className = 'font-bold text-amber-800 uppercase tracking-wide text-[10px]';
+      statusText.textContent = 'STREAM DEGRADED';
+      latencyText.textContent = '342ms';
+      latencyText.className = 'font-mono text-[11px] text-amber-900 font-bold';
+      showToast('⚠️ Network hiccup: Latency spiked to 342ms.', 'alert');
+    } else {
+      banner.classList.add('hidden');
+      pingDot.classList.add('bg-emerald-accent');
+      pingDot.classList.remove('bg-amber-500');
+      statusDot.className = 'relative inline-flex rounded-full h-2 w-2 bg-emerald-accent';
+      statusText.className = 'font-bold text-emerald-700 uppercase tracking-wide text-[10px]';
+      statusText.textContent = 'STREAM ACTIVE';
+      latencyText.textContent = '18ms';
+      latencyText.className = 'font-mono text-[11px] text-muted-dark font-medium';
+      showToast('🟢 Stream latency normalized (18ms).', 'success');
+    }
+  }
+
+  function downloadAlertsCSV() {
+    const headers = ["Alert_ID", "Transaction_ID", "Timestamp", "Merchant", "MCC", "Card_Token", "Channel", "Country", "Risk_Score", "Severity", "Status", "Amount_INR", "Top_Detector"];
+    const rows = alertsQueue.map(a => [
+      `"${a.id}"`,
+      `"${a.txId}"`,
+      `"${a.timestamp}"`,
+      `"${a.merchant}"`,
+      `"${a.mcc}"`,
+      `"${a.cardToken}"`,
+      `"${a.channel}"`,
+      `"${a.country}"`,
+      a.riskScore.toFixed(2),
+      `"${a.severity}"`,
+      `"${a.status}"`,
+      a.amount.toFixed(2),
+      `"${a.detectors[0] ? a.detectors[0].name.replace(/"/g, '""') : ''}"`
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `RiskPulse_Alerts_INR_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    showToast(`📥 Exported ${alertsQueue.length} flagged alerts to CSV.`, 'success');
+  }
+
+  function updatePersistentCounters() {
+    document.getElementById('counter-total').textContent = totalEventsProcessed.toLocaleString();
+    document.getElementById('counter-alerts').textContent = alertsQueue.length.toLocaleString();
+    document.getElementById('counter-frozen').textContent = totalFrozenCount.toLocaleString();
+
+    document.getElementById('kpi-open-alerts').textContent = alertsQueue.filter(a => a.status === 'NEW' || a.status === 'INVESTIGATING').length;
+    document.getElementById('kpi-critical-count').textContent = alertsQueue.filter(a => a.severity === 'CRITICAL' && a.status !== 'DISMISSED').length;
+    document.getElementById('kpi-frozen-count').textContent = totalFrozenCount;
+    document.getElementById('kpi-frozen-rupees').textContent = `${formatRupees(preventedLossRupees)} prevented`;
+    document.getElementById('kpi-var-amount').textContent = `${formatRupees(valueAtRiskRupees)}`;
+  }
+
+  function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    
+    let borderCol = "border-outline-variant";
+    let bgCol = "bg-white";
+    let textCol = "text-on-surface";
+    let icon = "info";
+
+    if (type === 'error') {
+      borderCol = "border-rose-200";
+      bgCol = "bg-rose-50";
+      textCol = "text-rose-900";
+      icon = "error";
+    } else if (type === 'alert') {
+      borderCol = "border-amber-200";
+      bgCol = "bg-amber-50";
+      textCol = "text-amber-900";
+      icon = "warning";
+    } else if (type === 'success') {
+      borderCol = "border-emerald-200";
+      bgCol = "bg-emerald-50";
+      textCol = "text-emerald-900";
+      icon = "check_circle";
+    }
+
+    toast.className = `flex items-center gap-2 px-3.5 py-2 rounded-2xl border ${borderCol} ${bgCol} ${textCol} shadow-lg font-sans text-[12px] font-medium pointer-events-auto transition-all transform duration-200 translate-y-2 opacity-0 max-w-md`;
+    toast.innerHTML = `
+      <span class="material-symbols-outlined text-[16px] shrink-0" data-icon="${icon}">${icon}</span>
+      <span class="flex-1">${message}</span>
+    `;
+
+    container.appendChild(toast);
+
+    requestAnimationFrame(() => {
+      toast.classList.remove('translate-y-2', 'opacity-0');
+    });
+
+    setTimeout(() => {
+      toast.classList.add('opacity-0', 'translate-y-2');
+      setTimeout(() => {
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
+      }, 200);
+    }, 3500);
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    // Populate initial transaction buffer
+    const initialTxs = [
+      { id: "TX-7753-6028", txId: "TX-7753-6028", merchant: "Nordic Hotel Suites", mcc: "7011 (Hotels)", cardToken: "•••• 7689", country: "BR", countryFlag: "🇧🇷", channel: "ONLINE", riskScore: 0.00, amount: 1669.00 },
+      { id: "TX-2533-9538", txId: "TX-2533-9538", merchant: "Urban Groceries", mcc: "5411 (Grocery)", cardToken: "•••• 4191", country: "US", countryFlag: "🇺🇸", channel: "ONLINE", riskScore: 0.01, amount: 485.00 },
+      { id: "TX-6580-9932", txId: "TX-6580-9932", merchant: "LuxuryWatch Co.", mcc: "5944 (Jewelry)", cardToken: "•••• 2331", country: "US", countryFlag: "🇺🇸", channel: "POS", riskScore: 0.15, amount: 12450.00 },
+      { id: "TX-5245-1149", txId: "TX-5245-1149", merchant: "Urban Groceries", mcc: "5411 (Grocery)", cardToken: "•••• 7995", country: "BR", countryFlag: "🇧🇷", channel: "ONLINE", riskScore: 0.27, amount: 890.00 },
+      { id: "TX-8840-1303", txId: "TX-8840-1303", merchant: "Stripe Subscriptions", mcc: "7372 (SaaS)", cardToken: "•••• 2904", country: "US", countryFlag: "🇺🇸", channel: "ONLINE", riskScore: 0.44, amount: 2199.00 },
+      { id: "TX-8728-8058", txId: "TX-8728-8058", merchant: "LuxuryWatch Co.", mcc: "5944 (Jewelry)", cardToken: "•••• 5304", country: "NG", countryFlag: "🇳🇬", channel: "ONLINE", riskScore: 0.11, amount: 6400.00 },
+      { id: "TX-7536-9793", txId: "TX-7536-9793", merchant: "Nordic Hotel Suites", mcc: "7011 (Hotels)", cardToken: "•••• 8745", country: "SG", countryFlag: "🇸🇬", channel: "ONLINE", riskScore: 0.26, amount: 3120.00 },
+      { id: "TX-6237-7418", txId: "TX-6237-7418", merchant: "Apex Electronics", mcc: "5732 (Electronics)", cardToken: "•••• 8067", country: "DE", countryFlag: "🇩🇪", channel: "ONLINE", riskScore: 0.18, amount: 1540.00 }
+    ];
+
+    initialTxs.forEach((initTx, idx) => {
+      const t = generateTransaction({
+        ...initTx,
+        timestamp: new Date(Date.now() - (initialTxs.length - idx) * 1200).toISOString()
+      });
+      liveTxBuffer.unshift(t);
+      prependLiveTableRow(t);
+    });
+
+    renderAlertsList();
+    updatePersistentCounters();
+    startStreamLoop();
+
+    window.addEventListener('keydown', (e) => {
+      if (!activeAlertCase) return;
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.key === 'i' || e.key === 'I') {
+        handleDrawerAction('INVESTIGATING');
+      } else if (e.key === 'f' || e.key === 'F') {
+        handleDrawerAction('FROZEN');
+      } else if (e.key === 'a' || e.key === 'A') {
+        handleDrawerAction('DISMISSED');
+      } else if (e.key === 'Escape') {
+        closeInvestigationDrawer();
+      }
+    });
+  });
+</script>
+</body></html>

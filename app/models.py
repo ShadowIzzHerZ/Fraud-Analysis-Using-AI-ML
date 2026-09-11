@@ -56,6 +56,7 @@ class Transaction:
     device_fp: str
     card_token: str
     user_id: str
+    ip: str = "0.0.0.0"
     scenario: Optional[str] = None  # which injected attack pattern produced this, if any
 
 
