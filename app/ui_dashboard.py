@@ -968,9 +968,9 @@ def dashboard_page() -> None:
     # -- Policy Rules screen --------------------------------------------------------------
     @ui.refreshable
     def policies_view() -> None:
-        with ui.element("div").classes("p-4 max-w-3xl"):
+        with ui.element("div").classes("p-4"):
             screen_header("Policy Rules", "What the detection engine looks for, and how enforcement policy reacts.")
-            with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm p-4 mb-4'):
+            with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm p-4 mb-4 max-w-3xl'):
                 raw_html(f'<div class="text-[13px] font-bold {tx("on_surface")} mb-3">Auto-Freeze Policy</div>')
                 with ui.element("div").classes("flex items-center gap-3"):
                     ui.switch(value=state.policy.auto_freeze_enabled, on_change=on_policy_toggle).props('color="#b8431e" dense')
@@ -984,7 +984,7 @@ def dashboard_page() -> None:
                     f'freezes every open alert scoring ≥ 0.80 immediately.</div>'
                 )
             raw_html(f'<div class="text-[11px] font-bold {tx("muted")} uppercase tracking-wider mb-2">Detectors</div>')
-            with ui.element("div").classes("space-y-2"):
+            with ui.element("div").classes("grid grid-cols-2 gap-3"):
                 for code, name, weight, desc in DETECTOR_REFERENCE:
                     raw_html(
                         f'<div class="{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl p-3 flex items-start gap-3">'
@@ -1004,78 +1004,80 @@ def dashboard_page() -> None:
         detector_counts = Counter(r.detector for a in all_alerts for r in a.score.reasons)
         sev_counts = Counter(a.score.severity.value for a in all_alerts)
         max_det = max(detector_counts.values()) if detector_counts else 1
-        with ui.element("div").classes("p-4 max-w-4xl"):
+        with ui.element("div").classes("p-4"):
             screen_header("Telemetry", "System-wide stats since this session started.")
-            with ui.element("div").classes("grid grid-cols-3 gap-3 mb-4"):
-                for label, value in [
-                    ("Events processed", f"{state.events_total:,}"),
-                    ("Alerts raised (ever)", f"{state.alerts_total:,}"),
-                    ("Cards frozen (ever)", f"{state.frozen_total:,}"),
-                ]:
-                    with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl p-3.5'):
-                        raw_html(
-                            f'<div class="text-[10px] font-bold uppercase tracking-wider {tx("muted")}">{escape(label)}</div>'
-                            f'<div class="text-2xl font-extrabold {tx("on_surface")}">{value}</div>'
+            with ui.element("div").classes("max-w-3xl"):
+                with ui.element("div").classes("grid grid-cols-3 gap-3 mb-4"):
+                    for label, value in [
+                        ("Events processed", f"{state.events_total:,}"),
+                        ("Alerts raised (ever)", f"{state.alerts_total:,}"),
+                        ("Cards frozen (ever)", f"{state.frozen_total:,}"),
+                    ]:
+                        with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl p-3.5'):
+                            raw_html(
+                                f'<div class="text-[10px] font-bold uppercase tracking-wider {tx("muted")}">{escape(label)}</div>'
+                                f'<div class="text-2xl font-extrabold {tx("on_surface")}">{value}</div>'
+                            )
+                with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm p-4 mb-4'):
+                    raw_html(f'<div class="text-[13px] font-bold {tx("on_surface")} mb-2">Throughput</div>')
+                    raw_html(
+                        f'<svg class="w-full h-16 {tx("primary")} stroke-current fill-none opacity-80" preserveAspectRatio="none" viewBox="0 0 100 20">'
+                        f'<path d="{sparkline_path(filters.throughput_history)}" stroke-linecap="round" stroke-width="1.5"></path></svg>'
+                        f'<div class="text-[11px] {tx("muted")} mt-1">{k["events_per_min"]:.0f} events/min right now</div>'
+                    )
+                with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm p-4'):
+                    # Inlined rather than reusing the rail's rule_engine_load()
+                    # refreshable — that one's `.refresh()` target must stay
+                    # pinned to the always-mounted rail copy, not whichever
+                    # screen last happened to call it.
+                    ops = k["events_per_min"] / 60
+                    cap = max(state.sim.base_rate, state.sim.burst_rate, 1)
+                    pct = min(100, round(ops / cap * 100))
+                    raw_html(
+                        f'<div class="flex justify-between items-center text-[10px] font-semibold {tx("muted")} mb-1.5 uppercase tracking-wider">'
+                        f'<span>RULE ENGINE LOAD</span><span class="{tx("on_surface")} font-bold">{ops:.1f} OPS/S</span></div>'
+                        f'<div class="w-full {bg("surface_high")} h-1.5 rounded-full overflow-hidden">'
+                        f'<div class="{bg("primary")} h-full rounded-full transition-all duration-300" style="width:{pct}%"></div></div>'
+                        f'<div class="text-[10px] {tx("muted")} mt-1.5 text-right">Pipeline: {pct}% capacity</div>'
+                    )
+            with ui.element("div").classes("grid grid-cols-2 gap-3 mt-4"):
+                with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm p-4'):
+                    raw_html(f'<div class="text-[13px] font-bold {tx("on_surface")} mb-2">Alerts by severity (all-time)</div>')
+                    if not sev_counts:
+                        raw_html(f'<div class="text-[12px] {tx("muted")}">No alerts yet.</div>')
+                    else:
+                        max_sev = max(sev_counts.values())
+                        rows = "".join(
+                            f'<div class="flex items-center gap-2 text-[11px] mb-1">'
+                            f'<span class="w-20 {tx("muted_dark")} font-semibold">{sev.upper()}</span>'
+                            f'<div class="flex-1 {bg("surface_high")} h-2 rounded-full overflow-hidden">'
+                            f'<div class="h-full rounded-full {SEV_DOT.get(sev, bg("surface_high"))}" style="width:{count / max_sev * 100:.0f}%"></div></div>'
+                            f'<span class="w-8 text-right {tx("on_surface")} font-bold">{count}</span></div>'
+                            for sev, count in sev_counts.most_common()
                         )
-            with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm p-4 mb-4'):
-                raw_html(f'<div class="text-[13px] font-bold {tx("on_surface")} mb-2">Throughput</div>')
-                raw_html(
-                    f'<svg class="w-full h-16 {tx("primary")} stroke-current fill-none opacity-80" preserveAspectRatio="none" viewBox="0 0 100 20">'
-                    f'<path d="{sparkline_path(filters.throughput_history)}" stroke-linecap="round" stroke-width="1.5"></path></svg>'
-                    f'<div class="text-[11px] {tx("muted")} mt-1">{k["events_per_min"]:.0f} events/min right now</div>'
-                )
-            with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm p-4 mb-4'):
-                # Inlined rather than reusing the rail's rule_engine_load()
-                # refreshable — that one's `.refresh()` target must stay
-                # pinned to the always-mounted rail copy, not whichever
-                # screen last happened to call it.
-                ops = k["events_per_min"] / 60
-                cap = max(state.sim.base_rate, state.sim.burst_rate, 1)
-                pct = min(100, round(ops / cap * 100))
-                raw_html(
-                    f'<div class="flex justify-between items-center text-[10px] font-semibold {tx("muted")} mb-1.5 uppercase tracking-wider">'
-                    f'<span>RULE ENGINE LOAD</span><span class="{tx("on_surface")} font-bold">{ops:.1f} OPS/S</span></div>'
-                    f'<div class="w-full {bg("surface_high")} h-1.5 rounded-full overflow-hidden">'
-                    f'<div class="{bg("primary")} h-full rounded-full transition-all duration-300" style="width:{pct}%"></div></div>'
-                    f'<div class="text-[10px] {tx("muted")} mt-1.5 text-right">Pipeline: {pct}% capacity</div>'
-                )
-            with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm p-4 mb-4'):
-                raw_html(f'<div class="text-[13px] font-bold {tx("on_surface")} mb-2">Alerts by severity (all-time)</div>')
-                if not sev_counts:
-                    raw_html(f'<div class="text-[12px] {tx("muted")}">No alerts yet.</div>')
-                else:
-                    max_sev = max(sev_counts.values())
-                    rows = "".join(
-                        f'<div class="flex items-center gap-2 text-[11px] mb-1">'
-                        f'<span class="w-20 {tx("muted_dark")} font-semibold">{sev.upper()}</span>'
-                        f'<div class="flex-1 {bg("surface_high")} h-2 rounded-full overflow-hidden">'
-                        f'<div class="h-full rounded-full {SEV_DOT.get(sev, bg("surface_high"))}" style="width:{count / max_sev * 100:.0f}%"></div></div>'
-                        f'<span class="w-8 text-right {tx("on_surface")} font-bold">{count}</span></div>'
-                        for sev, count in sev_counts.most_common()
-                    )
-                    raw_html(rows)
-            with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm p-4'):
-                raw_html(f'<div class="text-[13px] font-bold {tx("on_surface")} mb-2">Detector trigger counts (all-time)</div>')
-                if not detector_counts:
-                    raw_html(f'<div class="text-[12px] {tx("muted")}">No detectors have fired yet.</div>')
-                else:
-                    rows = "".join(
-                        f'<div class="flex items-center gap-2 text-[11px] mb-1">'
-                        f'<span class="w-28 {tx("muted_dark")} font-semibold">{escape(det)}</span>'
-                        f'<div class="flex-1 {bg("surface_high")} h-2 rounded-full overflow-hidden">'
-                        f'<div class="{bg("primary")} h-full rounded-full" style="width:{count / max_det * 100:.0f}%"></div></div>'
-                        f'<span class="w-8 text-right {tx("on_surface")} font-bold">{count}</span></div>'
-                        for det, count in detector_counts.most_common()
-                    )
-                    raw_html(rows)
+                        raw_html(rows)
+                with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm p-4'):
+                    raw_html(f'<div class="text-[13px] font-bold {tx("on_surface")} mb-2">Detector trigger counts (all-time)</div>')
+                    if not detector_counts:
+                        raw_html(f'<div class="text-[12px] {tx("muted")}">No detectors have fired yet.</div>')
+                    else:
+                        rows = "".join(
+                            f'<div class="flex items-center gap-2 text-[11px] mb-1">'
+                            f'<span class="w-28 {tx("muted_dark")} font-semibold">{escape(det)}</span>'
+                            f'<div class="flex-1 {bg("surface_high")} h-2 rounded-full overflow-hidden">'
+                            f'<div class="{bg("primary")} h-full rounded-full" style="width:{count / max_det * 100:.0f}%"></div></div>'
+                            f'<span class="w-8 text-right {tx("on_surface")} font-bold">{count}</span></div>'
+                            for det, count in detector_counts.most_common()
+                        )
+                        raw_html(rows)
 
     # -- Simulation screen --------------------------------------------------------------
     @ui.refreshable
     def simulation_view() -> None:
-        with ui.element("div").classes("p-4 max-w-3xl"):
+        with ui.element("div").classes("p-4"):
             screen_header("Simulation", "Drive the transaction firehose and inject attack scenarios by hand.")
             with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm p-4 mb-4 space-y-3'):
-                with ui.element("div").classes("flex items-center gap-3"):
+                with ui.element("div").classes("flex items-center gap-3 flex-wrap"):
                     run_controls()
                     with ui.element("div").classes(f'flex items-center gap-2 px-3 py-1 {bg("surface_low")} rounded-full border {bd("outline_variant")} text-[11px]'):
                         raw_html(f'<span class="{tx("muted")} font-bold text-[10px] uppercase">Rate</span>')
@@ -1089,17 +1091,17 @@ def dashboard_page() -> None:
                     ui.label("Nothing injected yet this session.")
             else:
                 rows = "".join(
-                    f'<div class="flex items-center justify-between {bg("surface_lowest")} border {bd("outline_variant")} rounded-xl px-3 py-2 text-[12px] mb-1.5">'
+                    f'<div class="flex items-center justify-between {bg("surface_lowest")} border {bd("outline_variant")} rounded-xl px-3 py-2 text-[12px]">'
                     f'<span class="{tx("on_surface")} font-semibold">{escape(label)}</span>'
                     f'<span class="{tx("muted")}">{n} events · {time_ago(ts)}</span></div>'
                     for ts, label, n in filters.injection_log
                 )
-                raw_html(rows)
+                raw_html(f'<div class="grid grid-cols-2 gap-2">{rows}</div>')
 
     # -- Audit Logs screen --------------------------------------------------------------
     @ui.refreshable
     def audit_view() -> None:
-        with ui.element("div").classes("p-4 max-w-3xl"):
+        with ui.element("div").classes("p-4"):
             screen_header("Audit Logs", "Every enforcement action taken, across every case, most recent first.")
             entries = []
             for aid in state.alert_order:
