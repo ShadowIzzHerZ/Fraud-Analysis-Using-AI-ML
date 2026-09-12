@@ -114,8 +114,20 @@ body { overflow: hidden; }
    server to track. */
 .hdr-hamburger { display: none; }
 .rail-backdrop { display: none; }
+.rail-mobile-nav { display: none; }
 @media (max-width: 768px) {
   .hdr-hamburger { display: inline-flex; }
+
+  /* Even after fixing the overlap bug below, there simply isn't room for
+     the header's own Console/Simulation/Policies/Audit Logs pills or its
+     two info-chip clusters (stream status; processed/alerts/frozen
+     counters) next to the hamburger at phone width — and the KPI cards on
+     the Console screen already show the same counters. The four nav
+     destinations move into the rail's drawer instead of disappearing (see
+     .rail-mobile-nav and rail_nav() in ui_dashboard.py); the chips are
+     just dropped since nothing else needs to show them on mobile. */
+  .hdr-live-indicator, .hdr-top-nav, .hdr-counters { display: none; }
+  .rail-mobile-nav { display: block; }
 
   #app-rail {
     position: fixed;

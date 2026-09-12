@@ -1214,6 +1214,9 @@ def dashboard_page() -> None:
         VIEW_RENDERERS.get(filters.view, console_view)()
 
     TOP_NAV_ITEMS = [("console", "Console"), ("simulation", "Simulation"), ("policies", "Policies"), ("audit", "Audit Logs")]
+    # Icons only needed for the mobile copy of this nav (see rail_nav below)
+    # — the header's own copy is text-only, same as it's always been.
+    TOP_NAV_ICONS = {"console": "dashboard", "simulation": "tune", "policies": "shield", "audit": "receipt_long"}
 
     @ui.refreshable
     def top_nav() -> None:
@@ -1237,6 +1240,24 @@ def dashboard_page() -> None:
 
     @ui.refreshable
     def rail_nav() -> None:
+        # Mobile only (see .rail-mobile-nav in theme.css): below the
+        # rail-collapse breakpoint the header hides its own Console/
+        # Simulation/Policies/Audit Logs pills (there's no room for them
+        # next to the hamburger once the header is this narrow — see the
+        # header's own comment), so those four destinations move in here,
+        # into the same hamburger-opened drawer as the rail's usual
+        # sub-nav, rather than disappearing entirely.
+        with ui.element("nav").classes(f'rail-mobile-nav space-y-1 mb-3.5 pb-3.5 border-b {bd("outline_variant")}'):
+            for key, label in TOP_NAV_ITEMS:
+                active = filters.view == key
+                cls = (
+                    f'w-full flex items-center gap-2.5 px-3 py-2 {bg("primary_container", "60")} {tx("primary")} font-semibold text-[13px] rounded-xl'
+                    if active else
+                    f'w-full flex items-center gap-2.5 px-3 py-2 {tx("muted_dark")} hover:{bg("surface_low")} font-medium text-[13px] rounded-xl transition-colors'
+                )
+                raw_html(
+                    f'<button class="{cls}">{icon(TOP_NAV_ICONS.get(key, "circle"), "text-[17px]")}<span>{escape(label)}</span></button>'
+                ).on("click", lambda e, k=key: set_view(k))
         with ui.element("nav").classes("space-y-1"):
             for key, ic, label in RAIL_NAV_ITEMS:
                 active = filters.view == key
@@ -1274,9 +1295,25 @@ def dashboard_page() -> None:
         # second line got cut off against the header's fixed height. Every
         # flex container in this header now sets its own `flex-nowrap`
         # explicitly rather than relying on an ancestor's.
+        #
+        # A second, related bug lived here too: this row used to be
+        # `justify-between` to pin the left group left and the right group
+        # right. That's fine while everything fits, but the instant the two
+        # groups' combined width exceeds the row (any window under ~1150px,
+        # worse on a phone), `justify-content:space-between`'s spec-defined
+        # fallback to flex-start under negative free space isn't reliably
+        # applied here — instead of the right group simply flowing off the
+        # edge (scrollable via this row's `overflow-x-auto` ancestor like
+        # everything else does), it gets positioned by the same "space
+        # between" math regardless, which under overflow works out to a
+        # negative gap: the right group renders on TOP of the left group's
+        # tail end instead of after it. A plain flex-1 spacer between the
+        # two groups sidesteps the whole issue — it shrinks to 0 under
+        # pressure instead of ever producing a negative gap, so the two
+        # groups always end up sequential, never overlapping.
         with ui.element("header").classes(f'h-16 px-6 {bg("surface_lowest")} border-b {bd("outline_variant")} z-40 shrink-0'):
             with ui.element("div").classes("h-full overflow-x-auto"):
-                with ui.element("div").classes("flex flex-nowrap items-center justify-between gap-3 h-full"):
+                with ui.element("div").classes("flex flex-nowrap items-center gap-3 h-full"):
                     with ui.element("div").classes("flex flex-nowrap items-center gap-3 min-w-0"):
                         # Mobile-only — CSS hides this above the rail-collapse
                         # breakpoint (see .hdr-hamburger in theme.css). Pure
@@ -1294,15 +1331,18 @@ def dashboard_page() -> None:
                             f'<span class="text-[10px] font-medium {tx("muted")} tracking-tight">Fraud Operations</span></div></div>'
                         )
                         raw_html(f'<div class="h-5 w-px {bg("outline_variant")} shrink-0"></div>')
-                        live_indicator()
-                        top_nav()
+                        with ui.element("div").classes("hdr-live-indicator shrink-0"):
+                            live_indicator()
+                        with ui.element("div").classes("hdr-top-nav shrink-0"):
+                            top_nav()
+                    # Grows on desktop to push the right-hand group flush to
+                    # the header's edge, shrinks to 0 the moment there isn't
+                    # room — see the note above on why that beats
+                    # `justify-between` once this row gets tight.
+                    raw_html('<div class="flex-1 min-w-0"></div>')
                     with ui.element("div").classes("flex flex-nowrap items-center gap-3 shrink-0"):
-                        header_counters()
-                        raw_html(
-                            f'<a href="/portal" target="_blank" rel="noopener" title="Open the customer-facing test portal" '
-                            f'class="flex items-center gap-1.5 px-3.5 py-1.5 {bg("surface_lowest")} hover:{bg("surface_container")} border {bd("outline_variant")} {tx("on_surface")} text-[12px] font-semibold rounded-full shadow-sm transition-all active:scale-[0.98] shrink-0">'
-                            f'{icon("qr_code_2", "text-[15px]")}<span class="inline hdr-label">Test Portal</span></a>'
-                        )
+                        with ui.element("div").classes("hdr-counters shrink-0"):
+                            header_counters()
                         raw_html(
                             f'<button title="Export CSV" class="flex items-center gap-1.5 px-3.5 py-1.5 {bg("surface_lowest")} hover:{bg("surface_container")} border {bd("outline_variant")} {tx("on_surface")} text-[12px] font-semibold rounded-full shadow-sm transition-all active:scale-[0.98] shrink-0">'
                             f'{icon("download", "text-[15px]")}<span class="inline hdr-label">Export CSV</span></button>'
