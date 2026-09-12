@@ -37,6 +37,7 @@ OPEN_STATUSES = {AlertStatus.NEW, AlertStatus.INVESTIGATING}
 class Channel(str, Enum):
     CARD_PRESENT = "card_present"
     ONLINE = "online"
+    UPI = "upi"  # submitted through the customer-facing test portal (app/portal.py)
 
 
 def new_id(prefix: str) -> str:
@@ -58,6 +59,7 @@ class Transaction:
     user_id: str
     ip: str = "0.0.0.0"
     scenario: Optional[str] = None  # which injected attack pattern produced this, if any
+    upi_vpa: Optional[str] = None  # fake, non-routable payee handle shown on the portal's QR (UPI channel only)
 
 
 @dataclass

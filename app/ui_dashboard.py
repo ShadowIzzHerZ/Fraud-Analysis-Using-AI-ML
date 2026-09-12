@@ -254,11 +254,12 @@ FEED_GRID = "grid-template-columns:104px 92px 1fr 96px 60px 84px 150px 96px"
 def feed_row_html(txn: Transaction, result: ScoreResult, flash: bool = False) -> str:
     score_cls = score_badge_class(result.risk_score)
     bar_color = "bg-[#b8431e]" if result.risk_score >= 0.75 else "bg-emerald-600"
-    channel_badge = (
-        f'<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold {bg("surface_container")} {tx("muted_dark")} border {bd("outline_subtle")}">ONLINE</span>'
-        if txn.channel.value == "online" else
-        f'<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold {bg("surface_low")} {tx("muted")} border {bd("outline_subtle")}">POS</span>'
-    )
+    if txn.channel.value == "online":
+        channel_badge = f'<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold {bg("surface_container")} {tx("muted_dark")} border {bd("outline_subtle")}">ONLINE</span>'
+    elif txn.channel.value == "upi":
+        channel_badge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-100 text-violet-700 border border-violet-200">UPI</span>'
+    else:
+        channel_badge = f'<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold {bg("surface_low")} {tx("muted")} border {bd("outline_subtle")}">POS</span>'
     amount_cls = tx("primary") if txn.amount > 3000 else tx("on_surface")
     flash_cls = " flash-new-tx" if flash else ""
     return (
@@ -439,7 +440,10 @@ def dashboard_page() -> None:
 
     def open_drawer(txn_id: str) -> None:
         filters.drawer_txn_id = txn_id
-        drawer.style("width:420px")
+        # min(), not a flat 420px — on a phone-width viewport this naturally
+        # becomes 100vw (full-screen drawer) with no media query needed;
+        # on desktop it's still exactly 420px.
+        drawer.style("width:min(420px, 100vw)")
         drawer_body.refresh()
         drawer_status_badge.refresh()
 
@@ -537,6 +541,12 @@ def dashboard_page() -> None:
         main_area.refresh()
         top_nav.refresh()
         rail_nav.refresh()
+        # Picking a screen from the mobile slide-over rail should close it —
+        # harmless no-op on desktop, where these classes do nothing.
+        ui.run_javascript(
+            "document.getElementById('app-rail')?.classList.remove('rail-open');"
+            "document.getElementById('rail-backdrop')?.classList.remove('rail-open');"
+        )
 
     def emergency_freeze() -> None:
         frozen = state.emergency_freeze(min_score=0.80)
@@ -750,7 +760,8 @@ def dashboard_page() -> None:
         items = state.recent_feed(limit=80)
         items = [it for it in items if it[0].ts >= filters.feed_cleared_at]
         if filters.channel != "ALL":
-            items = [it for it in items if it[0].channel.value == ("online" if filters.channel == "ONLINE" else "card_present")]
+            channel_map = {"ONLINE": "online", "POS": "card_present", "UPI": "upi"}
+            items = [it for it in items if it[0].channel.value == channel_map.get(filters.channel, filters.channel.lower())]
         if filters.search:
             q = filters.search.lower()
             items = [it for it in items if q in it[0].id.lower() or q in it[0].card_token.lower() or q in it[0].merchant.lower() or q in it[0].country.lower()]
@@ -832,6 +843,8 @@ def dashboard_page() -> None:
                     ("MERCHANT", t.merchant), ("MCC / CATEGORY", t.mcc),
                     ("CHANNEL", t.channel.value.upper()), ("IP & GEOLOCATION", f"{t.ip} ({t.country})"),
                 ]
+                if t.upi_vpa:
+                    fields.append(("PAYEE VPA (SIMULATED)", t.upi_vpa))
                 grid = "".join(
                     f'<div><span class="{tx("muted")} text-[9px] block">{k}</span><span class="{tx("on_surface")} font-semibold text-[11px]">{escape(str(v))}</span></div>'
                     for k, v in fields
@@ -1166,22 +1179,29 @@ def dashboard_page() -> None:
                     with ui.element("div").classes("flex items-center gap-2 min-w-0"):
                         ui.input(placeholder="Search Tx, Card, Geo...", on_change=on_search_change) \
                             .props('dense outlined color="#b8431e"').classes("min-w-0 flex-1 max-w-56 text-[11px]")
-                        ui.select({"ALL": "Channel: All", "ONLINE": "Online (CNP)", "POS": "In-Store / POS"},
+                        ui.select({"ALL": "Channel: All", "ONLINE": "Online (CNP)", "POS": "In-Store / POS", "UPI": "UPI Collect"},
                                   value=filters.channel, on_change=on_channel_change) \
                             .props('dense outlined').classes("shrink-0 text-[11px]")
                         raw_html(f'<button class="shrink-0 text-[11px] font-semibold {tx("muted")} hover:text-[{C["primary"]}] underline ml-1">Clear</button>') \
                             .on("click", lambda e: clear_feed_display())
-                raw_html(
-                    f'<div class="grid sticky top-0 {bg("surface_low", "95")} backdrop-blur border-b {bd("outline_variant")} z-10 '
-                    f'text-[10px] font-bold {tx("muted")} uppercase tracking-wider" style="{FEED_GRID}">'
-                    '<div class="px-4 py-1.5">TIME</div><div class="px-2 py-1.5">TX ID</div>'
-                    '<div class="px-2 py-1.5">MERCHANT</div><div class="px-2 py-1.5">CARD TOKEN</div>'
-                    '<div class="px-2 py-1.5 text-center">GEO</div><div class="px-2 py-1.5 text-center">CHANNEL</div>'
-                    '<div class="px-2 py-1.5">RISK SCORE</div><div class="px-4 py-1.5 text-right">AMOUNT</div>'
-                    '</div>'
-                )
-                with ui.element("div").classes("flex-1 overflow-y-auto min-h-0"):
-                    feed_body()
+                # The row grid has a real minimum width (fixed-px columns +
+                # a sane floor under the 1fr one) that won't fit a phone
+                # screen — this wrapper scrolls horizontally instead of
+                # clipping columns, with the header and rows sharing that
+                # scroll (both inside it) so columns stay aligned.
+                with ui.element("div").classes("flex-1 flex flex-col min-h-0 overflow-x-auto"):
+                    with ui.element("div").classes("min-w-[820px] flex flex-col flex-1 min-h-0"):
+                        raw_html(
+                            f'<div class="grid sticky top-0 {bg("surface_low", "95")} backdrop-blur border-b {bd("outline_variant")} z-10 '
+                            f'text-[10px] font-bold {tx("muted")} uppercase tracking-wider" style="{FEED_GRID}">'
+                            '<div class="px-4 py-1.5">TIME</div><div class="px-2 py-1.5">TX ID</div>'
+                            '<div class="px-2 py-1.5">MERCHANT</div><div class="px-2 py-1.5">CARD TOKEN</div>'
+                            '<div class="px-2 py-1.5 text-center">GEO</div><div class="px-2 py-1.5 text-center">CHANNEL</div>'
+                            '<div class="px-2 py-1.5">RISK SCORE</div><div class="px-4 py-1.5 text-right">AMOUNT</div>'
+                            '</div>'
+                        )
+                        with ui.element("div").classes("flex-1 overflow-y-auto min-h-0"):
+                            feed_body()
 
     VIEW_RENDERERS = {
         "console": console_view, "alerts": alerts_view, "investigation": investigation_view,
@@ -1258,6 +1278,16 @@ def dashboard_page() -> None:
             with ui.element("div").classes("h-full overflow-x-auto"):
                 with ui.element("div").classes("flex flex-nowrap items-center justify-between gap-3 h-full"):
                     with ui.element("div").classes("flex flex-nowrap items-center gap-3 min-w-0"):
+                        # Mobile-only — CSS hides this above the rail-collapse
+                        # breakpoint (see .hdr-hamburger in theme.css). Pure
+                        # inline JS, no server round trip: the rail/backdrop
+                        # only need a class toggled, nothing Python-side to
+                        # know about.
+                        raw_html(
+                            f'<button title="Menu" class="hdr-hamburger shrink-0 p-1.5 rounded-full {tx("muted")} hover:{bg("surface_low")} transition-colors" '
+                            f'onclick="document.getElementById(\'app-rail\').classList.add(\'rail-open\');document.getElementById(\'rail-backdrop\').classList.add(\'rail-open\');">'
+                            f'{icon("menu", "text-[20px]")}</button>'
+                        )
                         raw_html(
                             f'<div class="flex items-center gap-2.5 shrink-0"><div class="w-8 h-8 rounded-xl {bg("primary")} text-white flex items-center justify-center font-bold text-sm shadow-sm">Z</div>'
                             f'<div class="flex flex-col hdr-subtitle"><span class="text-[16px] font-bold tracking-tight {tx("on_surface")} leading-tight">Zen</span>'
@@ -1268,6 +1298,11 @@ def dashboard_page() -> None:
                         top_nav()
                     with ui.element("div").classes("flex flex-nowrap items-center gap-3 shrink-0"):
                         header_counters()
+                        raw_html(
+                            f'<a href="/portal" target="_blank" rel="noopener" title="Open the customer-facing test portal" '
+                            f'class="flex items-center gap-1.5 px-3.5 py-1.5 {bg("surface_lowest")} hover:{bg("surface_container")} border {bd("outline_variant")} {tx("on_surface")} text-[12px] font-semibold rounded-full shadow-sm transition-all active:scale-[0.98] shrink-0">'
+                            f'{icon("qr_code_2", "text-[15px]")}<span class="inline hdr-label">Test Portal</span></a>'
+                        )
                         raw_html(
                             f'<button title="Export CSV" class="flex items-center gap-1.5 px-3.5 py-1.5 {bg("surface_lowest")} hover:{bg("surface_container")} border {bd("outline_variant")} {tx("on_surface")} text-[12px] font-semibold rounded-full shadow-sm transition-all active:scale-[0.98] shrink-0">'
                             f'{icon("download", "text-[15px]")}<span class="inline hdr-label">Export CSV</span></button>'
@@ -1296,9 +1331,19 @@ def dashboard_page() -> None:
 
         error_banner()
 
+        # Backdrop for the mobile slide-over rail — invisible/inert above
+        # the rail-collapse breakpoint (see theme.css), a tap-to-close
+        # overlay below it.
+        raw_html(
+            '<div id="rail-backdrop" class="rail-backdrop" '
+            'onclick="this.classList.remove(\'rail-open\');document.getElementById(\'app-rail\').classList.remove(\'rail-open\');">'
+            '</div>'
+        )
+
         with ui.element("div").classes("flex flex-1 overflow-hidden min-h-0"):
             # Left rail
-            with ui.element("aside").classes(f'w-56 h-full min-h-0 shrink-0 {bg("surface_lowest")} border-r {bd("outline_variant")} flex flex-col justify-between p-3.5 overflow-y-auto'):
+            with ui.element("aside").classes(f'w-56 h-full min-h-0 shrink-0 {bg("surface_lowest")} border-r {bd("outline_variant")} flex flex-col justify-between p-3.5 overflow-y-auto') \
+                    .props('id=app-rail'):
                 with ui.element("div"):
                     raw_html(
                         f'<div class="{bg("surface_low")} p-3 rounded-xl border {bd("outline_subtle")} mb-3.5 flex items-center justify-between">'
@@ -1328,7 +1373,7 @@ def dashboard_page() -> None:
             # rather than stacking as a new row underneath everything.
             with ui.element("aside").classes(f'w-0 h-full min-h-0 overflow-hidden shrink-0 {bg("surface_lowest")} border-l {bd("outline_variant")} flex flex-col z-50 shadow-2xl') \
                     .style("width:0px") as drawer:
-                with ui.element("div").classes("w-[420px] h-full flex flex-col min-h-0"):
+                with ui.element("div").classes("w-full max-w-[420px] h-full flex flex-col min-h-0"):
                     with ui.element("div").classes(f'flex items-center justify-between px-5 py-3.5 {bg("surface_low", "70")} border-b {bd("outline_variant")} shrink-0'):
                         with ui.element("div").classes("flex items-center gap-2"):
                             raw_html(

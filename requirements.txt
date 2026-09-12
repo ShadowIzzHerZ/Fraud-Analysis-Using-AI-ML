@@ -1,3 +1,4 @@
 nicegui>=3.6,<4
 pydantic>=2,<3
 supabase>=2,<3
+qrcode>=8,<9

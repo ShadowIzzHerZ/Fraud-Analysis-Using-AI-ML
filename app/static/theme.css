@@ -100,3 +100,55 @@ body { overflow: hidden; }
 @media (max-width: 980px) {
   header .hdr-label-short { display: none; }
 }
+@media (max-width: 640px) {
+  header { gap: 0.375rem !important; padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+}
+
+/* Mobile: the 3-column shell (rail / main / investigation drawer) doesn't
+   fit a phone screen — the rail becomes a slide-over instead of a
+   permanent column. `position:fixed` also removes it from the flex row
+   entirely, so `main` gets the freed width automatically; no change
+   needed there. Toggled by the header's hamburger button and a
+   tap-anywhere-else backdrop, both plain inline JS (see ui_dashboard.py)
+   since this is purely a client-side show/hide with nothing for the
+   server to track. */
+.hdr-hamburger { display: none; }
+.rail-backdrop { display: none; }
+@media (max-width: 768px) {
+  .hdr-hamburger { display: inline-flex; }
+
+  #app-rail {
+    position: fixed;
+    top: 4rem; /* clears the h-16 header */
+    left: 0;
+    bottom: 0;
+    z-index: 60;
+    width: 16rem;
+    max-width: 85vw;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.12);
+  }
+  #app-rail.rail-open { transform: translateX(0); }
+
+  .rail-backdrop.rail-open {
+    display: block;
+    position: fixed;
+    inset: 4rem 0 0 0;
+    background: rgba(20, 15, 10, 0.35);
+    z-index: 55;
+  }
+}
+
+/* Grids that assume desktop width: same trick as the header rules above —
+   override the exact utility class name Tailwind already emitted
+   (grid-cols-2/3/4), since this bundle doesn't generate its own responsive
+   variants at all (see README's layout notes). A blanket single column
+   below 640px reads fine everywhere these classes get used (KPI cards,
+   alert/detector cards, telemetry stats) — none of it needs to stay
+   multi-column at phone width. */
+@media (max-width: 640px) {
+  .grid-cols-2, .grid-cols-3, .grid-cols-4 {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  }
+}

@@ -20,7 +20,7 @@ from app.auth import (
     sign_up,
     start_google_oauth,
 )
-from app.ui_dashboard import C, bd, bg, icon, raw_html, tx
+from app.ui_dashboard import _THEME_CSS_VERSION, C, bd, bg, icon, raw_html, tx
 
 OAUTH_VERIFIER_KEY = "zen_oauth_verifier"
 
@@ -64,7 +64,7 @@ def render_auth_card(mode: str, request: Request) -> None:
         '<link rel="preconnect" href="https://fonts.googleapis.com">'
         '<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">'
         '<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">'
-        '<link rel="stylesheet" href="/static/theme.css">'
+        f'<link rel="stylesheet" href="/static/theme.css?v={_THEME_CSS_VERSION}">'
         '<style>body,.font-sans{font-family:"Plus Jakarta Sans",ui-sans-serif,sans-serif}</style>'
     )
     ui.page_title(("Sign Up" if is_signup else "Log In") + " — Zen")
