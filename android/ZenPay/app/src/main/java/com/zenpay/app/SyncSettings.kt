@@ -6,15 +6,17 @@ private const val PREFS = "zenpay_prefs"
 private const val KEY_SYNC_ENABLED = "sync_enabled"
 private const val KEY_SYNC_URL = "sync_url"
 
-// 127.0.0.1:8080 is reached over USB via `adb reverse tcp:8080 tcp:8080` (run
-// once per device) — the most reliable path for two phones on a laptop's
-// desk, no Wi-Fi/tunnel dependency. This used to default to a Cloudflare
-// "quick tunnel" URL, but those are single-use and die the moment the
-// `cloudflared` process that created them exits, which is exactly what made
-// every sync silently fail (LocalWallet still worked, nothing ever reached
-// the analyst console). A LAN IP (e.g. http://10.0.0.5:8080) also works and
-// is the better choice once both devices are actually off USB.
-const val DEFAULT_SYNC_URL = "http://127.0.0.1:8080"
+// Points at the backend permanently deployed on an EC2 instance in
+// ap-south-1 (see scripts/ — it's not a Cloudflare quick tunnel or a
+// `adb reverse` loopback anymore, both of which die the moment the process
+// that created them exits, which is exactly what made every sync silently
+// fail before: LocalWallet still worked, nothing ever reached the analyst
+// console). This URL is stable — a real EC2 instance with an Elastic IP,
+// running the backend under systemd (auto-restarts on crash and reboot) —
+// so both devices reach the same backend over plain internet, no USB/LAN
+// dependency at all. Override in Settings if you're pointing at a
+// different backend (e.g. 127.0.0.1 over `adb reverse` for local dev).
+const val DEFAULT_SYNC_URL = "http://13.207.109.247:8080"
 
 /** Shared reader/writer for the "sync to analyst console" setting (Settings
  * screen in MainActivity) — SendMoneyActivity needs the same values to

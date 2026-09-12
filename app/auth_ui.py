@@ -238,19 +238,18 @@ async def oauth_callback_page(code: str = "", error: str = "", error_description
         show_error(error_description or error or "Google sign-in was cancelled.")
         return
 
-    verifier = app.storage.user.pop(OAUTH_VERIFIER_KEY, None)
+    # Read (don't pop) the verifier here — a browser prefetch/preconnect hit on
+    # this same URL (Safari and link-scanning security software both do this)
+    # could otherwise race a `.pop()` and silently consume the one-time
+    # verifier before the real navigation arrives, leaving this page with
+    # nothing to exchange. Only removed below once the exchange actually
+    # succeeds. Note: the ZenPay Android app never reaches this web page at
+    # all — it uses its own native `zenpay://auth-callback` redirect_to and
+    # completes the PKCE exchange itself (see AuthClient.kt) — so a missing
+    # verifier here always means a genuine web-session problem, never "this
+    # was meant for the app."
+    verifier = app.storage.user.get(OAUTH_VERIFIER_KEY)
     if not code or not verifier:
-        if code:
-            # Code returned but no web verifier — this OAuth was initiated from the ZenPay Android app!
-            ui.run_javascript(f'window.location.href = "zenpay://auth-callback?code={code}";')
-            status.clear()
-            with status:
-                ui.spinner(size="2em", color=C["primary"]).classes("mb-3")
-                raw_html(f'<p class="text-[13px] {tx("on_surface")}">Redirecting back to ZenPay app…</p>')
-                raw_html(
-                    f'<a href="zenpay://auth-callback?code={code}" class="inline-block mt-4 px-4 py-2 rounded-full text-white text-[12px] font-semibold" style="background:{C["primary"]}">Open ZenPay App</a>'
-                )
-            return
         show_error(
             "This sign-in link is missing its verification data — it may have expired, or been opened in a "
             "different browser than the one you started in. Please try again."
@@ -267,6 +266,7 @@ async def oauth_callback_page(code: str = "", error: str = "", error_description
         show_error(str(exc))
         return
 
+    app.storage.user.pop(OAUTH_VERIFIER_KEY, None)
     _store_session(result)
     ui.navigate.to("/")
 
