@@ -17,13 +17,21 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Optional
+from urllib.parse import urlencode
 
 from supabase import Client, create_client
+from supabase_auth.helpers import generate_pkce_challenge, generate_pkce_verifier
 
 SUPABASE_URL = "https://mpduaztlanucevfbpaip.supabase.co"
 SUPABASE_PUBLISHABLE_KEY = "sb_publishable_rDXMQ1jB-V2RGPhcWqPbEg_dIpxKZBl"
 
 SESSION_KEY = "zen_session"
+
+# Where Google sends the browser back to after consent. Must be added to
+# this Supabase project's Authentication > URL Configuration > Redirect
+# URLs allow-list, or the exchange below fails with "requested path is
+# invalid" even though everything else is configured correctly.
+OAUTH_CALLBACK_PATH = "/auth/callback"
 
 
 def _client() -> Client:
@@ -102,6 +110,62 @@ def sign_in(email: str, password: str) -> AuthResult:
         refresh_token=res.session.refresh_token,
         user_id=user.id,
         email=user.email or email,
+        display_name=display_name,
+    )
+
+
+@dataclass
+class OAuthStart:
+    url: str
+    code_verifier: str
+
+
+def start_google_oauth(redirect_to: str) -> OAuthStart:
+    """Build the Google consent-screen URL for the PKCE flow.
+
+    Built by hand (not via `client.auth.sign_in_with_oauth`) because that
+    call stashes its generated `code_verifier` in the client's own
+    in-memory storage — fine for a long-lived browser SDK, useless here
+    since this whole client is thrown away right after this function
+    returns and a *different* one handles the callback once Google's
+    redirect lands, seconds to minutes later. `generate_pkce_verifier` /
+    `_challenge` are the same public helpers that call uses internally;
+    the caller here is on the hook for carrying `code_verifier` across
+    that gap themselves (the auth UI puts it in `app.storage.user`).
+    """
+    verifier = generate_pkce_verifier()
+    challenge = generate_pkce_challenge(verifier)
+    params = {
+        "provider": "google",
+        "redirect_to": redirect_to,
+        "code_challenge": challenge,
+        "code_challenge_method": "s256",
+    }
+    url = f"{SUPABASE_URL}/auth/v1/authorize?{urlencode(params)}"
+    return OAuthStart(url=url, code_verifier=verifier)
+
+
+def complete_oauth(auth_code: str, code_verifier: str) -> AuthResult:
+    client = _client()
+    try:
+        res = client.auth.exchange_code_for_session({
+            "auth_code": auth_code,
+            "code_verifier": code_verifier,
+        })
+    except Exception as exc:
+        raise AuthError(_friendly(exc)) from exc
+
+    user = res.user
+    meta = (user.user_metadata or {}) if user else {}
+    display_name = (
+        meta.get("display_name") or meta.get("full_name") or meta.get("name")
+        or (user.email or "").split("@")[0] or "Analyst"
+    )
+    return AuthResult(
+        access_token=res.session.access_token,
+        refresh_token=res.session.refresh_token,
+        user_id=user.id,
+        email=user.email or "",
         display_name=display_name,
     )
 
