@@ -59,12 +59,10 @@ investigation drawer covers the most common reason an analyst would want that
 **Added beyond the PRD** (from the Stitch mockup's own feature set, wired to
 the real backend): an **Emergency Freeze** button that immediately freezes
 every open alert at or above a score of 0.80, independent of the configured
-auto-freeze threshold; a **Simulate Hiccup** toggle that demos the "stream
-degrades without crashing the UI" resilience requirement on demand; and IP +
-geolocation fields on every transaction, shown in the investigation drawer.
-Clicking a plain feed row (one that never crossed the alert threshold) opens
-the same drawer read-only-ish — taking an action on it promotes it into a
-real, tracked alert on the spot.
+auto-freeze threshold; and IP + geolocation fields on every transaction,
+shown in the investigation drawer. Clicking a plain feed row (one that never
+crossed the alert threshold) opens the same drawer read-only-ish — taking an
+action on it promotes it into a real, tracked alert on the spot.
 
 **Multi-screen navigation**: the top bar (Console/Simulation/Policies/Audit
 Logs) and left rail (Live Stream/Alerts Queue/Investigation/Policy Rules/
@@ -94,6 +92,37 @@ thresholds (the amount-outlier cold-start fallback, the new-device amount
 gate, the mule-burst average-ticket cap) were rescaled to realistic Indian
 price levels — the log-space z-score itself is scale-invariant, so it didn't
 need retuning, but the flat thresholds did.
+
+**Console layout**: the Console screen's own alert list was removed — every
+alert view lives on the Alerts Queue screen now, one click away via the
+"Open Alerts" KPI card (which is a button, not just a stat). The Live
+Ingestion Stream panel is now the full width of the screen, and its column
+header row sits outside the scrolling feed body (a `min-h-0` on the panel
+itself, not just the scroll container — without it the panel grows to fit
+all its rows instead of respecting the space it's given, and the whole page
+scrolls instead of just the feed). "Simulate Hiccup" and its degraded-stream
+banner were removed entirely, not just hidden.
+
+**Auth: Google (Supabase OAuth)**: `/login` and `/signup` both have a
+"Continue with Google" button alongside the email/password form.
+`app/auth.py`'s `start_google_oauth()`/`complete_oauth()` hand-roll the PKCE
+handshake (generate a verifier/challenge, redirect to Supabase's
+`/authorize`, exchange the returned `code` at `/auth/callback`) rather than
+using `supabase-py`'s `sign_in_with_oauth()` — that call stashes its
+verifier in the client's own in-memory storage, which doesn't survive the
+gap between "redirect the browser" and "handle the callback" when each is a
+different request (and likely a different client instance). The verifier is
+carried across that gap in `app.storage.user` instead. Google OAuth signups
+route to `zen_analysts` (not the other app's `profiles` table) by checking
+`raw_app_meta_data->>'provider' = 'google'` in the shared `handle_new_user`
+trigger, since email-metadata flags (used for password signups) aren't
+available on an OAuth signup and the other app on this project doesn't
+implement Google sign-in itself. **The Google provider still needs to be
+enabled by hand** in the Supabase dashboard (Authentication → Sign In /
+Providers → Google, with a Google Cloud OAuth client id/secret) — confirmed
+via a direct request to the `/authorize` endpoint, which currently 400s with
+"provider is not enabled"; there's no MCP/API path to flip that switch from
+here.
 
 **Auth**: [`app/auth.py`](app/auth.py) and [`app/auth_ui.py`](app/auth_ui.py)
 add real analyst accounts via [Supabase Auth](https://supabase.com/docs/guides/auth)

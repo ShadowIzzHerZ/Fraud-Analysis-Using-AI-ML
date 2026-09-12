@@ -90,7 +90,7 @@ STATUS_BADGE = {
     "new": f"{bg('surface_container')} {tx('muted_dark')}",
 }
 STATUS_LABEL = {"new": "NEW", "investigating": "IN REVIEW", "frozen": "FROZEN", "dismissed": "DISMISSED"}
-SCENARIO_EMOJI = {"velocity": "⚡", "amount_outlier": "💎", "impossible_travel": "✈️", "mule_burst": "🕸️"}
+SCENARIO_ICON = {"velocity": "bolt", "amount_outlier": "diamond", "impossible_travel": "flight", "mule_burst": "hub"}
 
 
 def score_badge_class(score: float) -> str:
@@ -170,6 +170,29 @@ def sparkline_path(values: list[float], width: float = 100, height: float = 20) 
         y = height - ((v - lo) / span) * height * 0.85 - height * 0.1
         pts.append(f"{x:.1f},{y:.1f}")
     return "M" + " L".join(pts)
+
+
+def throughput_chart_svg(values: list[float], gradient_id: str, css_height: str, color_hex: str) -> str:
+    """A real area chart (gridline + gradient fill + stroke), not just a
+    bare path — same 100x20 viewBox trick as before (stretched via
+    `preserveAspectRatio="none"` to whatever CSS height the caller sets),
+    just dressed up so it reads as a chart rather than a single line."""
+    width, height = 100, 20
+    line = sparkline_path(values, width, height)
+    area = f"{line} L{width},{height} L0,{height} Z"
+    return (
+        f'<svg class="w-full {css_height}" viewBox="0 0 {width} {height}" preserveAspectRatio="none">'
+        f'<defs><linearGradient id="{gradient_id}" x1="0" y1="0" x2="0" y2="1">'
+        f'<stop offset="0%" stop-color="{color_hex}" stop-opacity="0.32"/>'
+        f'<stop offset="100%" stop-color="{color_hex}" stop-opacity="0"/>'
+        f'</linearGradient></defs>'
+        f'<line x1="0" y1="{height * 0.5:.1f}" x2="{width}" y2="{height * 0.5:.1f}" '
+        f'stroke="currentColor" stroke-opacity="0.15" stroke-width="0.6" vector-effect="non-scaling-stroke"/>'
+        f'<path d="{area}" fill="url(#{gradient_id})" stroke="none"/>'
+        f'<path d="{line}" fill="none" stroke="{color_hex}" stroke-width="1.6" '
+        f'stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>'
+        f'</svg>'
+    )
 
 
 # -- data lookups ---------------------------------------------------------
@@ -319,7 +342,6 @@ class UIFilters:
     channel: str = "ALL"
     drawer_txn_id: Optional[str] = None
     feed_cleared_at: float = 0.0
-    hiccup: bool = False
     prev_events_per_min: float = 0.0
     max_at_risk_seen: float = 1.0
     throughput_history: list = field(default_factory=list)
@@ -380,39 +402,30 @@ def dashboard_page() -> None:
     # -- handlers --------------------------------------------------------------
     def refresh_after_alert_change() -> None:
         """Call after any alert mutation (status change, new alert, bulk
-        freeze, ...). alerts_body/kpi_strip only exist while the console
-        screen is mounted; other screens that show alert-derived data get a
-        full re-render instead, since they aren't on a per-tick refresh."""
+        freeze, ...). kpi_strip only exists while the console screen is
+        mounted; other screens that show alert-derived data get a full
+        re-render instead, since they aren't on a per-tick refresh."""
         header_counters.refresh()
         rail_nav.refresh()
         if filters.view == "console":
             kpi_strip.refresh()
-            alerts_body.refresh()
         elif filters.view in ("alerts", "investigation", "audit", "telemetry"):
             main_area.refresh()
 
     def on_search_change(e) -> None:
         filters.search = (e.value or "").strip()
         feed_body.refresh()
-        if filters.view == "console":
-            alerts_body.refresh()
-        elif filters.view == "alerts":
+        if filters.view == "alerts":
             main_area.refresh()
 
     def set_severity(sev: str) -> None:
         filters.severity = sev
-        severity_pills.refresh()
-        if filters.view == "console":
-            alerts_body.refresh()
-        elif filters.view == "alerts":
+        if filters.view == "alerts":
             main_area.refresh()
 
     def set_status(st: str) -> None:
         filters.status = st
-        status_pills.refresh()
-        if filters.view == "console":
-            alerts_body.refresh()
-        elif filters.view == "alerts":
+        if filters.view == "alerts":
             main_area.refresh()
 
     def on_channel_change(e) -> None:
@@ -445,9 +458,9 @@ def dashboard_page() -> None:
         updated = state.set_alert_status(alert.id, status, note=note_val)
         if updated:
             msgs = {
-                AlertStatus.FROZEN: (f"🛑 Card •••• {updated.transaction.card_token[-4:]} frozen. Merchant notified.", "negative"),
-                AlertStatus.INVESTIGATING: (f"🔍 Case {updated.transaction.id[-9:].upper()} escalated for review.", "ongoing"),
-                AlertStatus.DISMISSED: (f"✅ Alert {updated.transaction.id[-9:].upper()} dismissed.", "positive"),
+                AlertStatus.FROZEN: (f"Card •••• {updated.transaction.card_token[-4:]} frozen. Merchant notified.", "negative"),
+                AlertStatus.INVESTIGATING: (f"Case {updated.transaction.id[-9:].upper()} escalated for review.", "ongoing"),
+                AlertStatus.DISMISSED: (f"Alert {updated.transaction.id[-9:].upper()} dismissed.", "positive"),
             }
             msg, kind = msgs.get(status, ("Updated.", "info"))
             ui.notify(msg, position="bottom-right", timeout=3500, type=kind)
@@ -465,19 +478,19 @@ def dashboard_page() -> None:
         alert.log("Case notes updated by investigator")
         state.version += 1
         drawer_body.refresh()
-        ui.notify("📝 Investigator case notes saved.", position="bottom-right", timeout=3500)
+        ui.notify("Investigator case notes saved.", position="bottom-right", timeout=3500)
 
     def export_csv() -> None:
         csv_text = state.alerts_csv(limit=500)
         ui.download(csv_text.encode("utf-8"), filename="riskpulse_alerts.csv", media_type="text/csv")
-        ui.notify(f"📥 Exported {len(state.alerts)} flagged alerts to CSV.", position="bottom-right", timeout=3500, type="positive")
+        ui.notify(f"Exported {len(state.alerts)} flagged alerts to CSV.", position="bottom-right", timeout=3500, type="positive")
 
     def toggle_running() -> None:
         state.sim.running = not state.sim.running
         run_controls.refresh()
         live_indicator.refresh()
         ui.notify(
-            "▶️ Live transaction ingestion active." if state.sim.running else "⏸️ Ingestion stream paused.",
+            "Live transaction ingestion active." if state.sim.running else "Ingestion stream paused.",
             position="bottom-right", timeout=3000,
         )
 
@@ -501,16 +514,23 @@ def dashboard_page() -> None:
             pass
 
     def inject(scenario_key: str) -> None:
+        # Clicking the already-active button unselects it (back to no
+        # scenario highlighted) instead of re-injecting — the highlight is
+        # just "what did I last click" feedback, and needs a way back off.
+        if filters.last_injected == scenario_key:
+            filters.last_injected = None
+            inject_buttons.refresh()
+            return
+
         label, _fn = simulator.SCENARIOS[scenario_key]
         n = simulator.inject_scenario(scenario_key)
-        emoji = SCENARIO_EMOJI.get(scenario_key, "⚠️")
         filters.last_injected = scenario_key
         filters.injection_log.insert(0, (time.time(), label, n))
         del filters.injection_log[20:]
         inject_buttons.refresh()
         if filters.view == "simulation":
             main_area.refresh()
-        ui.notify(f"{emoji} {label}: {n} events queued", position="bottom-right", timeout=3500, type="warning")
+        ui.notify(f"{label}: {n} events queued", position="bottom-right", timeout=3500, type="warning")
 
     def set_view(view: str) -> None:
         filters.view = view
@@ -518,22 +538,13 @@ def dashboard_page() -> None:
         top_nav.refresh()
         rail_nav.refresh()
 
-    def toggle_hiccup() -> None:
-        filters.hiccup = not filters.hiccup
-        live_indicator.refresh()
-        hiccup_banner.refresh()
-        if filters.hiccup:
-            ui.notify("⚠️ Network hiccup: latency spiked to 342ms.", position="bottom-right", timeout=3500, type="warning")
-        else:
-            ui.notify("🟢 Stream latency normalized (18ms).", position="bottom-right", timeout=3500, type="positive")
-
     def emergency_freeze() -> None:
         frozen = state.emergency_freeze(min_score=0.80)
         refresh_after_alert_change()
         if filters.drawer_txn_id:
             drawer_body.refresh()
             drawer_status_badge.refresh()
-        ui.notify(f"🚨 Emergency Freeze: blocked {len(frozen)} high-risk cards immediately!", position="bottom-right", timeout=4000, type="negative")
+        ui.notify(f"Emergency Freeze: blocked {len(frozen)} high-risk cards immediately.", position="bottom-right", timeout=4000, type="negative")
 
     def do_logout() -> None:
         sign_out(session.get("access_token"))
@@ -546,14 +557,14 @@ def dashboard_page() -> None:
 
     def show_documentation() -> None:
         ui.notify(
-            "📖 Full docs live in the repo's README.md and docs/PRD.md — this build has no hosted docs site.",
+            "Full docs live in the repo's README.md and docs/PRD.md — this build has no hosted docs site.",
             position="bottom-right", timeout=5000,
         )
 
     def show_diagnostics() -> None:
         uptime = time.time() - state.started_at
         ui.notify(
-            f"🩺 Uptime {uptime / 60:.1f}m · {len(state.card_profiles):,} card profiles tracked · "
+            f"Uptime {uptime / 60:.1f}m · {len(state.card_profiles):,} card profiles tracked · "
             f"{len(state.feed)} events in feed buffer · {len(state.alerts)} alerts in memory",
             position="bottom-right", timeout=5000,
         )
@@ -580,28 +591,8 @@ def dashboard_page() -> None:
                 ui.button("Dismiss", on_click=clear_error_banner).props("flat dense").classes("text-[12px] font-semibold text-[#b8431e]")
 
     @ui.refreshable
-    def hiccup_banner() -> None:
-        if filters.hiccup:
-            with ui.element("div").classes(GLASS_BANNER):
-                raw_html(
-                    f'<div class="flex items-center gap-2.5">{icon("warning", "text-amber-700 text-[18px]")}'
-                    '<span class="font-bold text-amber-900 text-[12px]">STREAM DEGRADED:</span>'
-                    '<span class="text-[12px] text-amber-800">WebSocket heartbeat delayed (~342ms). Displaying cached telemetry without packet drop.</span>'
-                    '<span class="font-mono text-[10px] bg-amber-100/80 backdrop-blur-sm text-amber-900 px-2 py-0.5 rounded-full font-bold border border-amber-200/60">FALLBACK BUFFER</span></div>'
-                )
-                ui.button("Dismiss", on_click=toggle_hiccup).props("flat dense").classes("text-[12px] font-semibold text-[#b8431e]")
-
-    @ui.refreshable
     def live_indicator() -> None:
-        if filters.hiccup:
-            raw_html(
-                f'<div class="flex items-center gap-2 {bg("surface_low")} px-3 py-1 rounded-full border {bd("outline_variant")} text-[12px]">'
-                '<span class="relative flex h-2 w-2"><span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span></span>'
-                '<span class="font-bold text-amber-800 uppercase tracking-wide text-[10px]">STREAM DEGRADED</span>'
-                f'<span class="{tx("muted")} text-[10px]">·</span>'
-                '<span class="text-[11px] text-amber-900 font-bold">342ms</span></div>'
-            )
-        elif state.sim.running:
+        if state.sim.running:
             raw_html(
                 f'<div class="flex items-center gap-2 {bg("surface_low")} px-3 py-1 rounded-full border {bd("outline_variant")} text-[12px]">'
                 '<span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>'
@@ -655,15 +646,14 @@ def dashboard_page() -> None:
         with ui.element("div").classes("flex items-center gap-1.5 flex-wrap"):
             raw_html(f'<span class="text-[10px] font-bold {tx("muted")} uppercase tracking-wider mr-1">Inject Attack:</span>')
             for key, (label, _fn) in simulator.SCENARIOS.items():
-                emoji = SCENARIO_EMOJI.get(key, "⚠️")
                 active = filters.last_injected == key
                 cls = (
-                    f'px-2.5 py-1 {bg("primary")} text-white border border-[{C["primary"]}] text-[11px] font-semibold rounded-full transition-all active:scale-95 shadow-sm'
+                    f'flex items-center gap-1 px-2.5 py-1 {bg("primary")} text-white border border-[{C["primary"]}] text-[11px] font-semibold rounded-full transition-all active:scale-95 shadow-sm'
                     if active else
-                    f'px-2.5 py-1 {bg("surface_low")} hover:{bg("surface_container")} border {bd("outline_variant")} hover:border-[{C["primary"]}] {tx("on_surface")} text-[11px] font-semibold rounded-full transition-all active:scale-95'
+                    f'flex items-center gap-1 px-2.5 py-1 {bg("surface_low")} hover:{bg("surface_container")} border {bd("outline_variant")} hover:border-[{C["primary"]}] {tx("on_surface")} text-[11px] font-semibold rounded-full transition-all active:scale-95'
                 )
-                check = f' {icon("check_circle", "text-[12px]")}' if active else ""
-                raw_html(f'<button class="{cls}">{emoji} {escape(label)}{check}</button>').on("click", lambda e, k=key: inject(k))
+                check = icon("check_circle", "text-[12px]") if active else ""
+                raw_html(f'<button class="{cls}">{icon(SCENARIO_ICON.get(key, "bolt"), "text-[13px]")}<span>{escape(label)}</span>{check}</button>').on("click", lambda e, k=key: inject(k))
 
     @ui.refreshable
     def kpi_strip() -> None:
@@ -702,11 +692,14 @@ def dashboard_page() -> None:
                     f'<span class="flex items-center {trend_cls} px-2 py-0.5 rounded-full text-[10px] font-bold">{icon(trend_icon, "text-[11px] mr-0.5")} {pct:+.1f}%</span></div>'
                     f'<div class="my-2"><div class="text-2xl font-extrabold tracking-tight {tx("on_surface")} flex items-baseline gap-1">'
                     f'{k["events_per_min"]:.0f}<span class="text-xs font-normal {tx("muted")}">events/min</span></div></div>'
-                    f'<svg class="w-full h-4 {tx("primary")} stroke-current fill-none opacity-75" preserveAspectRatio="none" viewBox="0 0 100 20">'
-                    f'<path d="{sparkline_path(filters.throughput_history)}" stroke-linecap="round" stroke-width="2"></path></svg>'
+                    + throughput_chart_svg(filters.throughput_history, "kpiTpGrad", "h-6", C["primary"])
                 )
-            # Open alerts
-            with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} p-3.5 rounded-2xl shadow-sm flex flex-col justify-between'):
+            # Open alerts — the only place the flagged-alerts list lives now
+            # (no permanent side panel); click through to the full queue.
+            with ui.element("div").classes(
+                f'{bg("surface_lowest")} border {bd("outline_variant")} p-3.5 rounded-2xl shadow-sm flex flex-col justify-between '
+                f'cursor-pointer hover:shadow-md hover:border-[{C["primary"]}]/40 transition-all active:scale-[0.99]'
+            ).on("click", lambda e: set_view("alerts")):
                 raw_html(
                     f'<div class="flex items-center justify-between"><span class="text-[10px] font-bold uppercase tracking-wider {tx("muted")}">OPEN ALERTS</span>'
                     f'<span class="text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center">{icon("warning", "text-[11px] mr-0.5")} Critical: {critical_open}</span></div>'
@@ -775,18 +768,6 @@ def dashboard_page() -> None:
     @ui.refreshable
     def buffer_pill(n: int = 0) -> None:
         raw_html(f'<span class="text-[10px] font-medium px-2 py-0.5 {bg("surface_container")} rounded-full {tx("muted")} shrink-0">BUFFER: {n} TX</span>')
-
-    @ui.refreshable
-    def alerts_body() -> None:
-        alerts = filtered_alerts(filters)
-        alerts_count_badge.refresh(len(alerts))
-        rail_nav.refresh()
-        if not alerts:
-            with ui.element("div").classes(f"p-8 text-center {tx('muted')}"):
-                raw_html(icon("verified_user", "text-[32px] mb-2 block") + '<div class="text-[12px] font-semibold">No alerts match current filters.</div>')
-        else:
-            for alert in alerts:
-                raw_html(alert_card_html(alert)).on("click", lambda e, tid=alert.transaction.id: open_drawer(tid))
 
     @ui.refreshable
     def alerts_count_badge(n: int = 0) -> None:
@@ -987,19 +968,20 @@ def dashboard_page() -> None:
     def policies_view() -> None:
         with ui.element("div").classes("p-4"):
             screen_header("Policy Rules", "What the detection engine looks for, and how enforcement policy reacts.")
-            with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm p-4 mb-4 max-w-3xl'):
+            with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm p-4 mb-4'):
                 raw_html(f'<div class="text-[13px] font-bold {tx("on_surface")} mb-3">Auto-Freeze Policy</div>')
-                with ui.element("div").classes("flex items-center gap-3"):
-                    ui.switch(value=state.policy.auto_freeze_enabled, on_change=on_policy_toggle).props('color="#b8431e" dense')
-                    raw_html(f'<span class="text-[13px] font-semibold {tx("on_surface")}">Automatically freeze any alert scoring at or above</span>')
-                    ui.number(value=state.policy.auto_freeze_threshold, min=0.0, max=1.0, step=0.05,
-                              on_change=on_threshold_change, format="%.2f") \
-                        .props('dense outlined input-class="text-center"') \
-                        .classes(f'w-20 threshold-input text-[13px] {tx("primary")} font-bold')
-                raw_html(
-                    f'<div class="text-[11px] {tx("muted")} mt-2">Emergency Freeze (top bar) ignores this threshold and always '
-                    f'freezes every open alert scoring ≥ 0.80 immediately.</div>'
-                )
+                with ui.element("div").classes("flex items-center justify-between flex-wrap gap-3"):
+                    with ui.element("div").classes("flex items-center gap-3"):
+                        ui.switch(value=state.policy.auto_freeze_enabled, on_change=on_policy_toggle).props('color="#b8431e" dense')
+                        raw_html(f'<span class="text-[13px] font-semibold {tx("on_surface")}">Automatically freeze any alert scoring at or above</span>')
+                        ui.number(value=state.policy.auto_freeze_threshold, min=0.0, max=1.0, step=0.05,
+                                  on_change=on_threshold_change, format="%.2f") \
+                            .props('dense outlined input-class="text-center"') \
+                            .classes(f'w-20 threshold-input text-[13px] {tx("primary")} font-bold')
+                    raw_html(
+                        f'<div class="flex items-center gap-1.5 text-[11px] {tx("muted")} shrink-0">{icon("bolt", "text-[13px]")}'
+                        f'Emergency Freeze (top bar) ignores this and always freezes at ≥ 0.80.</div>'
+                    )
             raw_html(f'<div class="text-[11px] font-bold {tx("muted")} uppercase tracking-wider mb-2">Detectors</div>')
             with ui.element("div").classes("grid grid-cols-2 gap-3"):
                 for code, name, weight, desc in DETECTOR_REFERENCE:
@@ -1023,41 +1005,38 @@ def dashboard_page() -> None:
         max_det = max(detector_counts.values()) if detector_counts else 1
         with ui.element("div").classes("p-4"):
             screen_header("Telemetry", "System-wide stats since this session started.")
-            with ui.element("div").classes("max-w-3xl"):
-                with ui.element("div").classes("grid grid-cols-3 gap-3 mb-4"):
-                    for label, value in [
-                        ("Events processed", f"{state.events_total:,}"),
-                        ("Alerts raised (ever)", f"{state.alerts_total:,}"),
-                        ("Cards frozen (ever)", f"{state.frozen_total:,}"),
-                    ]:
-                        with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl p-3.5'):
-                            raw_html(
-                                f'<div class="text-[10px] font-bold uppercase tracking-wider {tx("muted")}">{escape(label)}</div>'
-                                f'<div class="text-2xl font-extrabold {tx("on_surface")}">{value}</div>'
-                            )
-                with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm p-4 mb-4'):
-                    raw_html(f'<div class="text-[13px] font-bold {tx("on_surface")} mb-2">Throughput</div>')
-                    raw_html(
-                        f'<svg class="w-full h-16 {tx("primary")} stroke-current fill-none opacity-80" preserveAspectRatio="none" viewBox="0 0 100 20">'
-                        f'<path d="{sparkline_path(filters.throughput_history)}" stroke-linecap="round" stroke-width="1.5"></path></svg>'
-                        f'<div class="text-[11px] {tx("muted")} mt-1">{k["events_per_min"]:.0f} events/min right now</div>'
-                    )
-                with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm p-4'):
-                    # Inlined rather than reusing the rail's rule_engine_load()
-                    # refreshable — that one's `.refresh()` target must stay
-                    # pinned to the always-mounted rail copy, not whichever
-                    # screen last happened to call it.
-                    ops = k["events_per_min"] / 60
-                    cap = max(state.sim.base_rate, state.sim.burst_rate, 1)
-                    pct = min(100, round(ops / cap * 100))
-                    raw_html(
-                        f'<div class="flex justify-between items-center text-[10px] font-semibold {tx("muted")} mb-1.5 uppercase tracking-wider">'
-                        f'<span>RULE ENGINE LOAD</span><span class="{tx("on_surface")} font-bold">{ops:.1f} OPS/S</span></div>'
-                        f'<div class="w-full {bg("surface_high")} h-1.5 rounded-full overflow-hidden">'
-                        f'<div class="{bg("primary")} h-full rounded-full transition-all duration-300" style="width:{pct}%"></div></div>'
-                        f'<div class="text-[10px] {tx("muted")} mt-1.5 text-right">Pipeline: {pct}% capacity</div>'
-                    )
-            with ui.element("div").classes("grid grid-cols-2 gap-3 mt-4"):
+            with ui.element("div").classes("grid grid-cols-3 gap-3 mb-4"):
+                for label, value in [
+                    ("Events processed", f"{state.events_total:,}"),
+                    ("Alerts raised (ever)", f"{state.alerts_total:,}"),
+                    ("Cards frozen (ever)", f"{state.frozen_total:,}"),
+                ]:
+                    with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl p-3.5'):
+                        raw_html(
+                            f'<div class="text-[10px] font-bold uppercase tracking-wider {tx("muted")}">{escape(label)}</div>'
+                            f'<div class="text-2xl font-extrabold {tx("on_surface")}">{value}</div>'
+                        )
+            with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm p-4 mb-4'):
+                with ui.element("div").classes("flex items-center justify-between mb-1"):
+                    raw_html(f'<div class="text-[13px] font-bold {tx("on_surface")}">Throughput</div>')
+                    raw_html(f'<div class="text-[11px] {tx("muted")}">{k["events_per_min"]:.0f} events/min right now</div>')
+                raw_html(f'<div class="{tx("primary")}">{throughput_chart_svg(filters.throughput_history, "telTpGrad", "h-28", C["primary"])}</div>')
+            with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm p-4 mb-4'):
+                # Inlined rather than reusing the rail's rule_engine_load()
+                # refreshable — that one's `.refresh()` target must stay
+                # pinned to the always-mounted rail copy, not whichever
+                # screen last happened to call it.
+                ops = k["events_per_min"] / 60
+                cap = max(state.sim.base_rate, state.sim.burst_rate, 1)
+                pct = min(100, round(ops / cap * 100))
+                raw_html(
+                    f'<div class="flex justify-between items-center text-[10px] font-semibold {tx("muted")} mb-1.5 uppercase tracking-wider">'
+                    f'<span>RULE ENGINE LOAD</span><span class="{tx("on_surface")} font-bold">{ops:.1f} OPS/S</span></div>'
+                    f'<div class="w-full {bg("surface_high")} h-1.5 rounded-full overflow-hidden">'
+                    f'<div class="{bg("primary")} h-full rounded-full transition-all duration-300" style="width:{pct}%"></div></div>'
+                    f'<div class="text-[10px] {tx("muted")} mt-1.5 text-right">Pipeline: {pct}% capacity</div>'
+                )
+            with ui.element("div").classes("grid grid-cols-2 gap-3"):
                 with ui.element("div").classes(f'{bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm p-4'):
                     raw_html(f'<div class="text-[13px] font-bold {tx("on_surface")} mb-2">Alerts by severity (all-time)</div>')
                     if not sev_counts:
@@ -1179,7 +1158,7 @@ def dashboard_page() -> None:
                     .classes(f'w-14 threshold-input {bg("surface_lowest")} border {bd("outline_variant")} rounded-full px-1 text-[11px] {tx("primary")} font-bold')
 
         with ui.element("div").classes("flex-1 flex overflow-hidden px-4 pb-4 gap-3.5 min-h-0"):
-            with ui.element("div").classes(f'flex-1 flex flex-col min-w-0 {bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm overflow-hidden'):
+            with ui.element("div").classes(f'flex-1 flex flex-col min-w-0 min-h-0 {bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm overflow-hidden'):
                 with ui.element("div").classes(f'flex items-center justify-between px-4 py-2.5 border-b {bd("outline_variant")} {bg("surface_low", "40")} shrink-0 w-full min-w-0 gap-3'):
                     with ui.element("div").classes("flex items-center gap-2 min-w-0"):
                         raw_html(f'{icon("dataset", tx("primary") + " text-[17px] shrink-0")}<span class="font-bold text-[13px] {tx("on_surface")} truncate">Live Ingestion Stream</span>')
@@ -1201,18 +1180,8 @@ def dashboard_page() -> None:
                     '<div class="px-2 py-1.5">RISK SCORE</div><div class="px-4 py-1.5 text-right">AMOUNT</div>'
                     '</div>'
                 )
-                with ui.element("div").classes("flex-1 overflow-y-auto"):
+                with ui.element("div").classes("flex-1 overflow-y-auto min-h-0"):
                     feed_body()
-
-            with ui.element("div").classes(f'w-[420px] shrink-0 flex flex-col {bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm overflow-hidden'):
-                with ui.element("div").classes(f'p-3 border-b {bd("outline_variant")} shrink-0 {bg("surface_low", "40")}'):
-                    with ui.element("div").classes("flex items-center justify-between mb-2"):
-                        raw_html(f'<div class="flex items-center gap-2">{icon("notification_important", "text-rose-600 text-[17px]")}<span class="font-bold text-[13px] {tx("on_surface")}">Flagged Alerts Queue</span></div>')
-                        alerts_count_badge()
-                    severity_pills()
-                    status_pills()
-                with ui.element("div").classes(f'flex-1 overflow-y-auto p-3 space-y-2.5 {bg("surface_lowest")}'):
-                    alerts_body()
 
     VIEW_RENDERERS = {
         "console": console_view, "alerts": alerts_view, "investigation": investigation_view,
@@ -1238,10 +1207,12 @@ def dashboard_page() -> None:
                 )
                 raw_html(f'<button class="{cls}">{escape(label)}</button>').on("click", lambda e, k=key: set_view(k))
 
+    # Policy Rules lives only in the top bar (as "Policies") now — it was
+    # duplicated here too, two links to the same screen in two different
+    # navs at once.
     RAIL_NAV_ITEMS = [
         ("console", "stream", "Live Stream"), ("alerts", "warning", "Alerts Queue"),
-        ("investigation", "travel_explore", "Investigation"), ("policies", "shield", "Policy Rules"),
-        ("telemetry", "monitoring", "Telemetry"),
+        ("investigation", "travel_explore", "Investigation"), ("telemetry", "monitoring", "Telemetry"),
     ]
 
     @ui.refreshable
@@ -1294,10 +1265,6 @@ def dashboard_page() -> None:
                         )
                         raw_html(f'<div class="h-5 w-px {bg("outline_variant")} shrink-0"></div>')
                         live_indicator()
-                        raw_html(
-                            f'<button title="Simulate Hiccup" class="flex items-center gap-1.5 px-3 py-1 {bg("surface_low")} hover:{bg("surface_container")} border {bd("outline_variant")} {tx("muted_dark")} hover:text-[{C["on_surface"]}] text-[11px] font-medium rounded-full transition-all active:scale-[0.98] shrink-0">'
-                            f'{icon("wifi_off", "text-[13px]")}<span class="hdr-label">Simulate Hiccup</span></button>'
-                        ).on("click", lambda e: toggle_hiccup())
                         top_nav()
                     with ui.element("div").classes("flex flex-nowrap items-center gap-3 shrink-0"):
                         header_counters()
@@ -1311,15 +1278,22 @@ def dashboard_page() -> None:
                         ).on("click", lambda e: emergency_freeze())
                         raw_html(f'<div class="h-5 w-px {bg("outline_variant")} shrink-0"></div>')
                         _analyst_name = session.get("display_name") or session.get("email", "?")
+                        _analyst_email = session.get("email", "")
                         _initials = "".join(w[0] for w in _analyst_name.split()[:2]).upper() or "?"
-                        raw_html(
-                            f'<div class="w-8 h-8 rounded-full {bg("surface_high")} border {bd("outline_variant")} flex items-center justify-center font-bold text-[11px] {tx("on_surface")} shrink-0" title="Signed in as {escape(session.get("email", ""))}">{escape(_initials)}</div>'
-                        )
-                        raw_html(
-                            f'<button title="Log out" class="p-1.5 {tx("muted")} hover:text-[{C["primary"]}] rounded-full hover:{bg("surface_low")} transition-colors shrink-0">{icon("logout", "text-[16px]")}</button>'
-                        ).on("click", lambda e: do_logout())
+                        with ui.element("div").classes(
+                            f'w-8 h-8 rounded-full {bg("surface_high")} border {bd("outline_variant")} flex items-center '
+                            f'justify-center font-bold text-[11px] {tx("on_surface")} shrink-0 cursor-pointer '
+                            f'hover:{bg("surface_container")} transition-colors'
+                        ).props(f'title="Signed in as {escape(_analyst_email)}"'):
+                            raw_html(escape(_initials))
+                            with ui.menu().props("auto-close"):
+                                with ui.column().classes("gap-0.5 py-2 px-3.5 min-w-[220px]"):
+                                    raw_html(f'<div class="text-[13px] font-bold {tx("on_surface")}">{escape(_analyst_name)}</div>')
+                                    raw_html(f'<div class="text-[11px] {tx("muted")}">{escape(_analyst_email)}</div>')
+                                    raw_html(f'<div class="text-[10px] font-semibold {tx("primary")} uppercase tracking-wider mt-1">Analyst · Zen</div>')
+                                ui.separator()
+                                ui.menu_item("Sign out", on_click=do_logout).classes("text-[13px] px-3.5")
 
-        hiccup_banner()
         error_banner()
 
         with ui.element("div").classes("flex flex-1 overflow-hidden min-h-0"):
@@ -1385,12 +1359,11 @@ def dashboard_page() -> None:
         # mounted has nothing to target, so scope each refresh to its screen.
         if filters.view == "console":
             kpi_strip.refresh()
-            # feed/alert lists tear down and rebuild their whole DOM subtree
-            # on every .refresh() — only pay for that when data actually
+            # The feed list tears down and rebuilds its whole DOM subtree on
+            # every .refresh() — only pay for that when data actually
             # changed (new transaction, status change, ...), not every tick.
             if version_changed:
                 feed_body.refresh()
-                alerts_body.refresh()
         elif filters.view == "telemetry":
             # Cheap enough (no per-row list rebuilding) to just redraw whole.
             main_area.refresh()
