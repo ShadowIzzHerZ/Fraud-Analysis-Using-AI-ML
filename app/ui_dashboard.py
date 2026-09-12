@@ -1180,17 +1180,17 @@ def dashboard_page() -> None:
 
         with ui.element("div").classes("flex-1 flex overflow-hidden px-4 pb-4 gap-3.5 min-h-0"):
             with ui.element("div").classes(f'flex-1 flex flex-col min-w-0 {bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm overflow-hidden'):
-                with ui.element("div").classes(f'flex items-center justify-between px-4 py-2.5 border-b {bd("outline_variant")} {bg("surface_low", "40")} shrink-0 gap-3'):
+                with ui.element("div").classes(f'flex items-center justify-between px-4 py-2.5 border-b {bd("outline_variant")} {bg("surface_low", "40")} shrink-0 w-full min-w-0 gap-3'):
                     with ui.element("div").classes("flex items-center gap-2 min-w-0"):
                         raw_html(f'{icon("dataset", tx("primary") + " text-[17px] shrink-0")}<span class="font-bold text-[13px] {tx("on_surface")} truncate">Live Ingestion Stream</span>')
                         buffer_pill()
-                    with ui.element("div").classes("flex items-center gap-2 shrink-0"):
+                    with ui.element("div").classes("flex items-center gap-2 min-w-0"):
                         ui.input(placeholder="Search Tx, Card, Geo...", on_change=on_search_change) \
-                            .props('dense outlined color="#b8431e"').classes("w-56 text-[11px]")
+                            .props('dense outlined color="#b8431e"').classes("min-w-0 flex-1 max-w-56 text-[11px]")
                         ui.select({"ALL": "Channel: All", "ONLINE": "Online (CNP)", "POS": "In-Store / POS"},
                                   value=filters.channel, on_change=on_channel_change) \
-                            .props('dense outlined').classes("text-[11px]")
-                        raw_html(f'<button class="text-[11px] font-semibold {tx("muted")} hover:text-[{C["primary"]}] underline ml-1">Clear</button>') \
+                            .props('dense outlined').classes("shrink-0 text-[11px]")
+                        raw_html(f'<button class="shrink-0 text-[11px] font-semibold {tx("muted")} hover:text-[{C["primary"]}] underline ml-1">Clear</button>') \
                             .on("click", lambda e: clear_feed_display())
                 raw_html(
                     f'<div class="grid sticky top-0 {bg("surface_low", "95")} backdrop-blur border-b {bd("outline_variant")} z-10 '
