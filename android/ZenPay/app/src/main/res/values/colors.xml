@@ -1,0 +1,33 @@
+<resources>
+    <!-- Mirrors the "Warm Civic Minimal" palette from app/ui_dashboard.py's
+         `C` dict in the Python web app, so this app reads as the same
+         product even though it's a separate install. -->
+    <color name="primary">#B8431E</color>
+    <color name="primary_hover">#9E391B</color>
+    <color name="primary_container">#FFE5DE</color>
+    <color name="on_primary_container">#3A0A00</color>
+    <color name="background">#F7F5F0</color>
+    <color name="surface">#FBF9F5</color>
+    <color name="surface_lowest">#FFFFFF</color>
+    <color name="surface_low">#F4F1EA</color>
+    <color name="surface_container">#EDE9E0</color>
+    <color name="outline">#8C716A</color>
+    <color name="outline_variant">#E5E1D8</color>
+    <color name="on_surface">#1B1C1A</color>
+    <color name="on_surface_variant">#58423B</color>
+    <color name="muted">#76726C</color>
+
+    <color name="warning_bg">#FFF8E1</color>
+    <color name="warning_border">#F5C453</color>
+    <color name="warning_text">#7A4B00</color>
+
+    <color name="success_bg">#E8F5E9</color>
+    <color name="success_text">#1B5E20</color>
+    <color name="alert_bg">#FFF3E0</color>
+    <color name="alert_text">#8C4A00</color>
+    <color name="frozen_bg">#FDECEA</color>
+    <color name="frozen_text">#B3261E</color>
+
+    <color name="white">#FFFFFF</color>
+    <color name="stamp_red">#DC2626</color>
+</resources>

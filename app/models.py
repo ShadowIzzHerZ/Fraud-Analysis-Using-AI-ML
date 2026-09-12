@@ -38,6 +38,7 @@ class Channel(str, Enum):
     CARD_PRESENT = "card_present"
     ONLINE = "online"
     UPI = "upi"  # submitted through the customer-facing test portal (app/portal.py)
+    P2P = "p2p"  # ZenPay user-to-user wallet transfer (app/portal.py's /api/portal/transfer)
 
 
 def new_id(prefix: str) -> str:

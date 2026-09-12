@@ -9,6 +9,7 @@ from __future__ import annotations
 from html import escape
 
 from fastapi import Request
+from fastapi.responses import RedirectResponse
 from nicegui import app, run, ui
 
 from app.auth import (
@@ -239,6 +240,17 @@ async def oauth_callback_page(code: str = "", error: str = "", error_description
 
     verifier = app.storage.user.pop(OAUTH_VERIFIER_KEY, None)
     if not code or not verifier:
+        if code:
+            # Code returned but no web verifier — this OAuth was initiated from the ZenPay Android app!
+            ui.run_javascript(f'window.location.href = "zenpay://auth-callback?code={code}";')
+            status.clear()
+            with status:
+                ui.spinner(size="2em", color=C["primary"]).classes("mb-3")
+                raw_html(f'<p class="text-[13px] {tx("on_surface")}">Redirecting back to ZenPay app…</p>')
+                raw_html(
+                    f'<a href="zenpay://auth-callback?code={code}" class="inline-block mt-4 px-4 py-2 rounded-full text-white text-[12px] font-semibold" style="background:{C["primary"]}">Open ZenPay App</a>'
+                )
+            return
         show_error(
             "This sign-in link is missing its verification data — it may have expired, or been opened in a "
             "different browser than the one you started in. Please try again."
@@ -257,3 +269,13 @@ async def oauth_callback_page(code: str = "", error: str = "", error_description
 
     _store_session(result)
     ui.navigate.to("/")
+
+
+@app.get("/auth/app-callback")
+def app_oauth_callback(code: str = "", error: str = "", error_description: str = "") -> RedirectResponse:
+    """FastAPI endpoint that directly 302-redirects to zenpay://auth-callback for mobile OAuth."""
+    target = f"zenpay://auth-callback?code={code}"
+    if error:
+        target += f"&error={error}&error_description={error_description}"
+    return RedirectResponse(url=target, status_code=302)
+

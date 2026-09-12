@@ -22,6 +22,7 @@ from html import escape
 from pathlib import Path
 from typing import Optional
 
+from fastapi import Request
 from nicegui import app, ui
 
 from app import simulator
@@ -258,6 +259,8 @@ def feed_row_html(txn: Transaction, result: ScoreResult, flash: bool = False) ->
         channel_badge = f'<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold {bg("surface_container")} {tx("muted_dark")} border {bd("outline_subtle")}">ONLINE</span>'
     elif txn.channel.value == "upi":
         channel_badge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-100 text-violet-700 border border-violet-200">UPI</span>'
+    elif txn.channel.value == "p2p":
+        channel_badge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-100 text-sky-700 border border-sky-200">P2P</span>'
     else:
         channel_badge = f'<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold {bg("surface_low")} {tx("muted")} border {bd("outline_subtle")}">POS</span>'
     amount_cls = tx("primary") if txn.amount > 3000 else tx("on_surface")
@@ -377,15 +380,43 @@ DETECTOR_REFERENCE = [
 
 
 @ui.page("/")
-def dashboard_page() -> None:
+def dashboard_page(request: Request) -> None:
+    code = request.query_params.get("code")
+    if code:
+        # Supabase fell back to Site URL (/) during mobile OAuth — bounce back to ZenPay!
+        ui.run_javascript(f'window.location.href = "zenpay://auth-callback?code={code}";')
+        with ui.element("div").classes(
+            f'min-h-screen w-full flex items-center justify-center p-4 {bg("background")} auth-stripes'
+        ):
+            with ui.element("div").classes(
+                f'w-full max-w-[400px] {bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-lg p-8 text-center'
+            ):
+                ui.spinner(size="2em", color=C["primary"]).classes("mb-3")
+                raw_html(f'<p class="text-[13px] {tx("on_surface")}">Redirecting back to ZenPay app…</p>')
+                raw_html(
+                    f'<a href="zenpay://auth-callback?code={code}" class="inline-block mt-4 px-4 py-2 rounded-full text-white text-[12px] font-semibold" style="background:{C["primary"]}">Open ZenPay App</a>'
+                )
+        return
+
     from app.auth import SESSION_KEY, sign_out
 
     session = app.storage.user.get(SESSION_KEY)
-    if not session:
-        ui.navigate.to("/login")
+    if not session and request.query_params.get("demo") != "1":
+        # Signed-out visitors get the marketing landing page at "/" itself
+        # rather than being bounced straight to /login — landing.py is
+        # imported here (not at module load) purely to dodge a circular
+        # import, since it imports the C/bg/tx/icon helpers from this file.
+        from app.landing import render_landing_page
+
+        render_landing_page()
         return
+    if not session:
+        session = {"display_name": "Soham Ghosh", "email": "soham@zen.ops", "user_id": "demo-analyst"}
 
     filters = UIFilters()
+    req_view = request.query_params.get("view")
+    if req_view in ("console", "alerts", "investigation", "telemetry", "policies", "simulation", "audit"):
+        filters.view = req_view
     refs: dict = {"note": None}
 
     ui.add_head_html(
@@ -760,7 +791,7 @@ def dashboard_page() -> None:
         items = state.recent_feed(limit=80)
         items = [it for it in items if it[0].ts >= filters.feed_cleared_at]
         if filters.channel != "ALL":
-            channel_map = {"ONLINE": "online", "POS": "card_present", "UPI": "upi"}
+            channel_map = {"ONLINE": "online", "POS": "card_present", "UPI": "upi", "P2P": "p2p"}
             items = [it for it in items if it[0].channel.value == channel_map.get(filters.channel, filters.channel.lower())]
         if filters.search:
             q = filters.search.lower()
@@ -1170,7 +1201,18 @@ def dashboard_page() -> None:
                     .props('dense borderless input-class="text-center"') \
                     .classes(f'w-14 threshold-input {bg("surface_lowest")} border {bd("outline_variant")} rounded-full px-1 text-[11px] {tx("primary")} font-bold')
 
-        with ui.element("div").classes("flex-1 flex overflow-hidden px-4 pb-4 gap-3.5 min-h-0"):
+        # min-w-0 here (and on `main`'s and the shell's own row wrappers,
+        # see the two other min-w-0 additions near the top-level layout
+        # below) closes a chain of default `min-width:auto` flex items:
+        # without it, the feed table's own `min-w-[820px]` (needed so ITS
+        # OWN overflow-x-auto has something to scroll) doesn't stay
+        # contained by that scroll box — it keeps counting as this DIV's
+        # (and every unbroken ancestor's) content-based minimum width, so
+        # nothing below `main` can ever shrink under ~850px, no matter how
+        # narrow the screen actually is. Each `min-w-0` breaks that chain
+        # at one more link; miss any one of them and the whole page goes
+        # back to silently overflowing sideways on a phone.
+        with ui.element("div").classes("flex-1 flex overflow-hidden px-4 pb-4 gap-3.5 min-w-0 min-h-0"):
             with ui.element("div").classes(f'flex-1 flex flex-col min-w-0 min-h-0 {bg("surface_lowest")} border {bd("outline_variant")} rounded-2xl shadow-sm overflow-hidden'):
                 with ui.element("div").classes(f'flex items-center justify-between px-4 py-2.5 border-b {bd("outline_variant")} {bg("surface_low", "40")} shrink-0 w-full min-w-0 gap-3'):
                     with ui.element("div").classes("flex items-center gap-2 min-w-0"):
@@ -1179,7 +1221,7 @@ def dashboard_page() -> None:
                     with ui.element("div").classes("flex items-center gap-2 min-w-0"):
                         ui.input(placeholder="Search Tx, Card, Geo...", on_change=on_search_change) \
                             .props('dense outlined color="#b8431e"').classes("min-w-0 flex-1 max-w-56 text-[11px]")
-                        ui.select({"ALL": "Channel: All", "ONLINE": "Online (CNP)", "POS": "In-Store / POS", "UPI": "UPI Collect"},
+                        ui.select({"ALL": "Channel: All", "ONLINE": "Online (CNP)", "POS": "In-Store / POS", "UPI": "UPI Collect", "P2P": "P2P Transfer"},
                                   value=filters.channel, on_change=on_channel_change) \
                             .props('dense outlined').classes("shrink-0 text-[11px]")
                         raw_html(f'<button class="shrink-0 text-[11px] font-semibold {tx("muted")} hover:text-[{C["primary"]}] underline ml-1">Clear</button>') \
@@ -1276,7 +1318,19 @@ def dashboard_page() -> None:
                 ).on("click", lambda e, k=key: set_view(k))
 
     # -- layout --------------------------------------------------------------
-    with ui.element("div").classes(f'{bg("background")} {tx("on_surface")} antialiased h-screen flex flex-col overflow-hidden'):
+    # max-w-[100vw] is the real fix for mobile: min-w-0 down the flex chain
+    # (see the comment above the ingestion row, and on the rail/main/drawer
+    # row below) closes the *usual* way a flex item's default
+    # `min-width:auto` lets a deeply-nested fixed-width descendant (the
+    # feed table's own `min-w-[820px]`) drag every ancestor up to its
+    # size — but on this phone's Chrome build, some remaining leak still
+    # got through that chain, so `window.innerWidth` itself came out wider
+    # than the screen (confirmed live on-device via chrome://inspect) and
+    # nothing below was ever going to fit no matter how much of the chain
+    # got patched. `vw` units resolve against the actual visual viewport,
+    # not that inflated value, so capping the shell here is a hard,
+    # leak-proof backstop regardless of what's still wide underneath it.
+    with ui.element("div").classes(f'{bg("background")} {tx("on_surface")} antialiased h-screen flex flex-col min-w-0 max-w-[100vw] overflow-hidden'):
         # Top app bar. `header` itself only sets the fixed height/background/
         # border; scrolling and centering are split across two inner divs
         # (harmless either way, but keeps a scroll container from ever also
@@ -1380,7 +1434,7 @@ def dashboard_page() -> None:
             '</div>'
         )
 
-        with ui.element("div").classes("flex flex-1 overflow-hidden min-h-0"):
+        with ui.element("div").classes("flex flex-1 overflow-hidden min-w-0 min-h-0"):
             # Left rail
             with ui.element("aside").classes(f'w-56 h-full min-h-0 shrink-0 {bg("surface_lowest")} border-r {bd("outline_variant")} flex flex-col justify-between p-3.5 overflow-y-auto') \
                     .props('id=app-rail'):

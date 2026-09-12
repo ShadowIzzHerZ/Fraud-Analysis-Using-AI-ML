@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="4dp"
+        android:text="@string/app_name"
+        android:textColor="@color/on_surface"
+        android:textSize="28sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="32dp"
+        android:text="Sign in to send and receive fake money"
+        android:textColor="@color/muted"
+        android:textSize="13sp" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        app:cardBackgroundColor="@color/warning_bg"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="0dp"
+        app:strokeColor="@color/warning_border"
+        app:strokeWidth="1dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="14dp"
+            android:text="⚠ SIMULATION ONLY. Signing in identifies you inside this demo — it never touches a real bank account, and nothing here can move real money."
+            android:textColor="@color/warning_text"
+            android:textSize="12sp" />
+    </com.google.android.material.card.MaterialCardView>
+
+    <Button
+        android:id="@+id/googleSignInButton"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginBottom="8dp"
+        android:backgroundTint="@color/surface_lowest"
+        android:elevation="1dp"
+        android:gravity="center"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:text="Continue with Google"
+        android:textAllCaps="false"
+        android:textColor="@color/on_surface"
+        app:cornerRadius="26dp"
+        app:icon="@drawable/ic_google_g"
+        app:iconGravity="textStart"
+        app:iconPadding="10dp"
+        app:iconTint="@null"
+        app:strokeColor="@color/outline_variant"
+        app:strokeWidth="1dp"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/statusText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="center"
+        android:textColor="@color/frozen_text"
+        android:textSize="12sp"
+        android:visibility="gone" />
+
+</LinearLayout>

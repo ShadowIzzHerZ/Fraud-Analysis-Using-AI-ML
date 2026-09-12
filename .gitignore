@@ -9,3 +9,10 @@ __pycache__/
 # NiceGUI's on-disk session store — per-browser storage.user data, which
 # now includes Supabase access/refresh tokens. Never commit this.
 .nicegui/
+
+# Runtime artifacts from running main.py / scripts/start_sync_tunnel.sh
+# locally — a log file and a Cloudflare quick-tunnel URL that dies the
+# moment the cloudflared process that created it exits, so it's stale on
+# every machine but the one that just ran the script.
+.main.log
+cloud_url.txt

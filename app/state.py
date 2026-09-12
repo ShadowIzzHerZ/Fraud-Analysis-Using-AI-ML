@@ -94,7 +94,7 @@ class Policy:
 
 @dataclass
 class SimulatorControls:
-    running: bool = False
+    running: bool = True
     base_rate: float = 15.0  # events/sec, normal traffic
     burst_rate: float = 40.0  # events/sec, during an injected attack
     burst_until: float = 0.0  # timestamp; while now < this, use burst_rate

@@ -21,23 +21,119 @@ CARD_POOL_SIZE = 1000
 
 # (display name, mcc, category) — category drives amount range + channel mix.
 # Vendors are fictional but India-flavored, matching the CURRENCY below.
+# Several vendors per category (not just one canonical one) so the "prefer a
+# merchant this card has shopped at before" logic in _pick_merchant actually
+# has real variety to draw from, and enough categories to give the live
+# stream a believable everyday spread rather than a handful of repeats.
 MERCHANTS: list[tuple[str, str, str]] = [
+    # grocery
     ("Sabzi Mandi Grocers", "5411", "grocery"),
+    ("BigBasket", "5411", "grocery"),
+    ("Reliance Fresh", "5411", "grocery"),
+    ("JioMart", "5411", "grocery"),
+    ("DMart", "5411", "grocery"),
+    ("More Supermarket", "5411", "grocery"),
+    # restaurant
     ("Dilli Darbar Dhaba", "5812", "restaurant"),
-    ("Bharat Petrol Pump", "5541", "fuel"),
-    ("Lotus Electronics Bazaar", "5732", "electronics"),
-    ("Garuda Airways", "4511", "travel"),
-    ("Taj Vista Hotel", "7011", "hotel"),
-    ("StreamPlus India", "5968", "subscription"),
-    ("DesiMarket Online", "5969", "online_marketplace"),
-    ("Apollo CarePoint Pharmacy", "5912", "pharmacy"),
-    ("Bharat ATM Network", "6011", "atm"),
-    ("Rajwada Jewellers", "5944", "luxury"),
-    ("RideNow India", "4121", "rideshare"),
-    ("CityLight Power Utilities", "4900", "utilities"),
-    ("Thread & Co. Apparel India", "5651", "clothing"),
     ("Chai Tapri Café", "5814", "restaurant"),
+    ("Pizza Junction India", "5812", "restaurant"),
+    ("Swiggy", "5812", "restaurant"),
+    ("Zomato", "5812", "restaurant"),
+    ("Domino's Pizza", "5812", "restaurant"),
+    ("Barbeque Nation", "5812", "restaurant"),
+    # fuel
+    ("Bharat Petrol Pump", "5541", "fuel"),
+    ("HP Highway Fuel Station", "5541", "fuel"),
+    ("Indian Oil Petrol Pump", "5541", "fuel"),
+    ("Shell Fuel Station", "5541", "fuel"),
+    # electronics
+    ("Lotus Electronics Bazaar", "5732", "electronics"),
+    ("Croma", "5732", "electronics"),
+    ("Reliance Digital", "5732", "electronics"),
+    ("Vijay Sales", "5732", "electronics"),
+    # travel
+    ("Garuda Airways", "4511", "travel"),
+    ("IRCTC Rail Booking", "4112", "travel"),
+    ("MakeMyStay Travels", "4722", "travel"),
+    ("MakeMyTrip", "4722", "travel"),
+    ("Yatra", "4722", "travel"),
+    ("IndiGo Airlines", "4511", "travel"),
+    # hotel
+    ("Taj Vista Hotel", "7011", "hotel"),
+    ("OYO Comfort Rooms", "7011", "hotel"),
+    ("Airbnb Stay", "7011", "hotel"),
+    ("Lemon Tree Hotels", "7011", "hotel"),
+    # subscription
+    ("StreamPlus India", "5968", "subscription"),
+    ("PlayFlix OTT", "5968", "subscription"),
+    ("Netflix", "5968", "subscription"),
+    ("Spotify", "5968", "subscription"),
+    ("JioCinema", "5968", "subscription"),
+    # online_marketplace
+    ("DesiMarket Online", "5969", "online_marketplace"),
+    ("Amazon.in", "5969", "online_marketplace"),
+    ("Flipkart", "5969", "online_marketplace"),
+    ("Tata CLiQ", "5969", "online_marketplace"),
+    ("Meesho", "5969", "online_marketplace"),
+    # pharmacy
+    ("Apollo CarePoint Pharmacy", "5912", "pharmacy"),
+    ("MedPlus Wellness Store", "5912", "pharmacy"),
+    ("PharmEasy", "5912", "pharmacy"),
+    ("1mg", "5912", "pharmacy"),
+    # atm
+    ("Bharat ATM Network", "6011", "atm"),
+    ("SBI ATM", "6011", "atm"),
+    ("HDFC Bank ATM", "6011", "atm"),
+    # luxury
+    ("Rajwada Jewellers", "5944", "luxury"),
+    ("Royal Timepieces Boutique", "5944", "luxury"),
+    ("Tanishq", "5944", "luxury"),
+    ("Kalyan Jewellers", "5944", "luxury"),
+    # rideshare
+    ("RideNow India", "4121", "rideshare"),
+    ("QuickCab Rides", "4121", "rideshare"),
+    ("Ola Cabs", "4121", "rideshare"),
+    ("Uber", "4121", "rideshare"),
+    # utilities
+    ("CityLight Power Utilities", "4900", "utilities"),
+    ("BharatGas Cylinder Booking", "4900", "utilities"),
+    ("Airtel Bill Pay", "4900", "utilities"),
+    ("Tata Power", "4900", "utilities"),
+    # clothing
+    ("Thread & Co. Apparel India", "5651", "clothing"),
+    ("Myntra", "5651", "clothing"),
+    ("Reliance Trends", "5651", "clothing"),
+    ("Ajio", "5651", "clothing"),
+    ("Urban Threads Fashion", "5651", "clothing"),
+    ("Pantaloons", "5651", "clothing"),
+    # home
     ("Ghar Decor Home Store", "5200", "home"),
+    ("Furnish & Co. Furniture", "5712", "home"),
+    ("Pepperfry", "5712", "home"),
+    ("Urban Ladder", "5712", "home"),
+    # entertainment
+    ("PVR CineMax", "7832", "entertainment"),
+    ("Inox Movie Lounge", "7832", "entertainment"),
+    ("BookMyShow", "7832", "entertainment"),
+    # education
+    ("BrightMinds Learning Center", "8299", "education"),
+    ("BYJU'S Learning", "8299", "education"),
+    ("Unacademy", "8299", "education"),
+    # fitness
+    ("FitZone Gym & Wellness", "7997", "fitness"),
+    ("PowerHouse CrossFit Studio", "7997", "fitness"),
+    ("Cult.fit", "7997", "fitness"),
+    # salon
+    ("Glow Salon & Spa", "7230", "salon"),
+    ("Naturals Salon", "7230", "salon"),
+    ("Lakmé Salon", "7230", "salon"),
+    # pet_care
+    ("Pawsome Pet Store", "5995", "pet_care"),
+    ("Woof & Whiskers Pet Clinic", "0742", "pet_care"),
+    # bakery
+    ("Sweet Treats Bakery", "5462", "bakery"),
+    ("Theobroma Bakery", "5462", "bakery"),
+    ("Monginis", "5462", "bakery"),
 ]
 
 # All amounts are ₹ (INR) — realistic everyday Indian price levels per category.
@@ -57,6 +153,12 @@ CATEGORY_AMOUNT_RANGE = {
     "utilities": (300, 6000),
     "clothing": (250, 8000),
     "home": (400, 20000),
+    "entertainment": (150, 1500),
+    "education": (500, 15000),
+    "fitness": (500, 5000),
+    "salon": (300, 4000),
+    "pet_care": (200, 3000),
+    "bakery": (100, 1200),
 }
 
 CATEGORY_ONLINE_BIAS = {
@@ -64,6 +166,8 @@ CATEGORY_ONLINE_BIAS = {
     "electronics": 0.4, "clothing": 0.5, "utilities": 0.7, "rideshare": 0.05,
     "grocery": 0.05, "restaurant": 0.05, "fuel": 0.02, "pharmacy": 0.1,
     "atm": 0.0, "luxury": 0.3, "home": 0.4,
+    "entertainment": 0.3, "education": 0.6, "fitness": 0.2, "salon": 0.05,
+    "pet_care": 0.3, "bakery": 0.1,
 }
 
 CURRENCY = "INR"

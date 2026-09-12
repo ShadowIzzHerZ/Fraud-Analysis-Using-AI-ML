@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A QR-code glyph (three finder-pattern corners + a scattering of data
+     cells) for myQrButton — replaces the stock ic_menu_myplaces "person on
+     a map" icon, which read as a places/profile shortcut rather than "show
+     my ZenPay QR code". Tint follows the ImageButton's own color (primary,
+     set via app:tint in the layout), same as the other two header icons. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- top-left finder pattern (evenOdd so the inner square punches a
+         hole, giving a ring instead of a solid block) -->
+    <path android:fillColor="#4A4742" android:fillType="evenOdd" android:pathData="M3,3h7v7h-7z M5,5v3h3v-3z" />
+    <!-- top-right finder pattern -->
+    <path android:fillColor="#4A4742" android:fillType="evenOdd" android:pathData="M14,3h7v7h-7z M16,5v3h3v-3z" />
+    <!-- bottom-left finder pattern -->
+    <path android:fillColor="#4A4742" android:fillType="evenOdd" android:pathData="M3,14h7v7h-7z M5,16v3h3v-3z" />
+    <!-- scattered data cells -->
+    <path android:fillColor="#4A4742" android:pathData="M14,14h3v3h-3z" />
+    <path android:fillColor="#4A4742" android:pathData="M18,14h3v3h-3z" />
+    <path android:fillColor="#4A4742" android:pathData="M14,18h3v3h-3z" />
+    <path android:fillColor="#4A4742" android:pathData="M18,18h3v3h-3z" />
+    <path android:fillColor="#4A4742" android:pathData="M12,3h1v4h-1z" />
+    <path android:fillColor="#4A4742" android:pathData="M3,12h4v1h-4z" />
+    <path android:fillColor="#4A4742" android:pathData="M9,9h2v2h-2z" />
+    <path android:fillColor="#4A4742" android:pathData="M12,12h2v2h-2z" />
+</vector>

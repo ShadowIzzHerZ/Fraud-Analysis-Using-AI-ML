@@ -12,7 +12,7 @@ from app import simulator
 from app.state import state
 from app import ui_dashboard  # noqa: F401  (import registers the @ui.page('/') route)
 from app import auth_ui  # noqa: F401  (registers @ui.page('/login') and '/signup')
-from app import portal  # noqa: F401  (registers the public @ui.page('/portal') test-payment page)
+from app import portal  # noqa: F401  (registers the POST /api/portal/pay endpoint for the Android app)
 
 
 async def _simulation_loop() -> None:

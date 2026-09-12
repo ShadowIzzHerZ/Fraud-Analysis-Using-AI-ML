@@ -8,12 +8,27 @@
 html, body, #app {
   margin: 0;
   padding: 0;
+  width: 100%;
   height: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
   background: #f7f5f0;
 }
 
-body { overflow: hidden; }
-.nicegui-content { padding: 0 !important; height: 100vh; }
+body {
+  overflow: hidden;
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+.nicegui-content {
+  padding: 0 !important;
+  height: 100vh;
+  width: 100% !important;
+  max-width: 100vw !important;
+  align-items: stretch !important;
+  overflow-x: hidden !important;
+}
 
 .material-symbols-outlined {
   font-variation-settings: 'FILL' 0, 'wght' 450, 'GRAD' 0, 'opsz' 20;

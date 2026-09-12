@@ -1,0 +1,20 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Fixed light theme, not DayNight — this app's "Warm Civic Minimal"
+         design (matching the web app's) is light-only by design, same as
+         that web app. DayNight previously caused input text/hints to
+         inherit the dark-mode variant's near-white default color while
+         every surface here is hardcoded light, making typed text and
+         hints invisible on a phone with system dark mode on — text
+         colors on inputs are now also set explicitly as a backstop. -->
+    <style name="Theme.ZenPay" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryDark">@color/primary_hover</item>
+        <item name="colorAccent">@color/primary</item>
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:textColorPrimary">@color/on_surface</item>
+        <item name="android:textColorSecondary">@color/on_surface_variant</item>
+        <item name="android:textColorHint">@color/muted</item>
+        <item name="android:statusBarColor" tools:targetApi="21">@color/background</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="23">true</item>
+    </style>
+</resources>
